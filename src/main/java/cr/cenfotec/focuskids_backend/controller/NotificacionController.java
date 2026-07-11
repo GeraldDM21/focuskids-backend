@@ -4,6 +4,7 @@ import cr.cenfotec.focuskids_backend.model.Notificacion;
 import cr.cenfotec.focuskids_backend.service.NotificacionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/notificaciones")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class NotificacionController {
 
     private final NotificacionService notificacionService;
