@@ -37,6 +37,11 @@ public class PerfilNinoController {
         return ResponseEntity.ok(perfilNinoService.actualizar(id, perfil));
     }
 
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<PerfilNino> toggleActivo(@PathVariable Integer id) {
+        return ResponseEntity.ok(perfilNinoService.toggleActivo(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         perfilNinoService.eliminar(id);

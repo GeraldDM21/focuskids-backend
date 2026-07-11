@@ -44,6 +44,13 @@ public class PerfilNinoService {
         return perfilNinoRepository.save(perfil);
     }
 
+    @Transactional
+    public PerfilNino toggleActivo(Integer id) {
+        PerfilNino perfil = obtenerPorId(id);
+        perfil.setActivo(!perfil.getActivo());
+        return perfilNinoRepository.save(perfil);
+    }
+
     public void eliminar(Integer id) {
         perfilNinoRepository.deleteById(id);
     }
