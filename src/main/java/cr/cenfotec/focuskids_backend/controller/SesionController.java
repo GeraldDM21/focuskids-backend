@@ -5,6 +5,7 @@ import cr.cenfotec.focuskids_backend.model.SessionClickEvent;
 import cr.cenfotec.focuskids_backend.service.SesionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/sesiones")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('PADRE', 'DOCENTE', 'ADMINISTRADOR')")
 public class SesionController {
 
     private final SesionService sesionService;

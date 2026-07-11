@@ -32,4 +32,7 @@ public class PerfilNino {
 
     @Column(name = "avatar", length = 255)
     private String avatar;
+
+    @Column(name = "activo", nullable = false)
+    private Boolean activo = true;
 }
