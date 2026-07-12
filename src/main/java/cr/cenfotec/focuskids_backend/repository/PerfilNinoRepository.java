@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface PerfilNinoRepository extends JpaRepository<PerfilNino, Integer> {
     List<PerfilNino> findByPadreId(Integer padreId);
+    List<PerfilNino> findByPadreUsuarioId(Integer usuarioId);
 }
