@@ -36,4 +36,10 @@ public class Usuario {
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
+
+    @Column(name = "token_verificacion", length = 255)
+    private String tokenVerificacion;
+
+    @Column(name = "token_expiracion")
+    private LocalDateTime tokenExpiracion;
 }

@@ -4,6 +4,7 @@ import cr.cenfotec.focuskids_backend.model.UsuarioRol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -19,6 +20,10 @@ public class RegisterRequest {
 
     @NotBlank(message = "La contraseña es requerida")
     @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
+    @Pattern(
+            regexp = "^(?=.*[A-Z])(?=.*\\d).+$",
+            message = "La contraseña debe tener al menos 8 caracteres, 1 mayúscula y 1 número"
+    )
     private String password;
 
     @NotNull(message = "El rol es requerido")
