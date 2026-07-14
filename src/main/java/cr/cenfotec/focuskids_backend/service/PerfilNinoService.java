@@ -17,8 +17,9 @@ public class PerfilNinoService {
     private final PerfilNinoRepository perfilNinoRepository;
     private final PadreTutorRepository padreTutorRepository;
 
-    public List<PerfilNino> obtenerPorPadre(Integer padreId) {
-        return perfilNinoRepository.findByPadreId(padreId);
+    public List<PerfilNino> obtenerPorPadre(Integer usuarioId) {
+        // El frontend envía el usuarioId del JWT, no el PadreTutor.id
+        return perfilNinoRepository.findByPadreUsuarioId(usuarioId);
     }
 
     public PerfilNino obtenerPorId(Integer id) {
@@ -27,9 +28,10 @@ public class PerfilNinoService {
     }
 
     @Transactional
-    public PerfilNino crear(Integer padreId, PerfilNino perfil) {
-        PadreTutor padre = padreTutorRepository.findById(padreId)
-                .orElseThrow(() -> new RuntimeException("Padre no encontrado: " + padreId));
+    public PerfilNino crear(Integer usuarioId, PerfilNino perfil) {
+        // El frontend envía el usuarioId del JWT, no el PadreTutor.id
+        PadreTutor padre = padreTutorRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Padre no encontrado para usuario: " + usuarioId));
         perfil.setPadre(padre);
         return perfilNinoRepository.save(perfil);
     }
@@ -41,6 +43,13 @@ public class PerfilNinoService {
         perfil.setEdad(datos.getEdad());
         perfil.setDiagnostico(datos.getDiagnostico());
         perfil.setAvatar(datos.getAvatar());
+        return perfilNinoRepository.save(perfil);
+    }
+
+    @Transactional
+    public PerfilNino toggleActivo(Integer id) {
+        PerfilNino perfil = obtenerPorId(id);
+        perfil.setActivo(!perfil.getActivo());
         return perfilNinoRepository.save(perfil);
     }
 
