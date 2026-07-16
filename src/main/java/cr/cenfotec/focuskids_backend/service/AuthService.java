@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,17 +31,22 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final EmailService emailService;
 
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        String token = jwtUtil.generateToken(userDetails);
-
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            throw new RuntimeException("Debes verificar tu correo antes de iniciar sesión.");
+        }
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+        String token = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
                 .token(token)
@@ -52,17 +59,43 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (usuarioRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("El email ya está registrado");
+        Optional<Usuario> existente = usuarioRepository.findByEmail(request.getEmail());
+
+        if (existente.isPresent()) {
+            Usuario usuarioExistente = existente.get();
+
+            if (Boolean.TRUE.equals(usuarioExistente.getActivo())) {
+                throw new RuntimeException("Este correo ya tiene una cuenta registrada.");
+            }
+
+            // La cuenta existe pero nunca se verificó: reenviamos el correo con un token nuevo
+            String nuevoToken = UUID.randomUUID().toString();
+            usuarioExistente.setTokenVerificacion(nuevoToken);
+            usuarioExistente.setTokenExpiracion(LocalDateTime.now().plusHours(24));
+            usuarioRepository.save(usuarioExistente);
+
+            emailService.enviarCorreoVerificacion(usuarioExistente.getEmail(), usuarioExistente.getNombre(), nuevoToken);
+
+            return AuthResponse.builder()
+                    .usuarioId(usuarioExistente.getId())
+                    .nombre(usuarioExistente.getNombre())
+                    .email(usuarioExistente.getEmail())
+                    .rol(usuarioExistente.getRol())
+                    .mensaje("Ya tenías una cuenta pendiente de verificación con este correo. Te reenviamos el correo de verificación.")
+                    .build();
         }
+
+        String token = UUID.randomUUID().toString();
 
         Usuario usuario = Usuario.builder()
                 .nombre(request.getNombre())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .rol(request.getRol())
-                .activo(true)
+                .activo(false)
                 .fechaCreacion(LocalDateTime.now())
+                .tokenVerificacion(token)
+                .tokenExpiracion(LocalDateTime.now().plusHours(24))
                 .build();
 
         usuarioRepository.save(usuario);
@@ -95,15 +128,36 @@ public class AuthService {
             default -> { /* NINO no tiene perfil de usuario directo */ }
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
-        String token = jwtUtil.generateToken(userDetails);
+        emailService.enviarCorreoVerificacion(usuario.getEmail(), usuario.getNombre(), token);
 
         return AuthResponse.builder()
-                .token(token)
                 .usuarioId(usuario.getId())
                 .nombre(usuario.getNombre())
                 .email(usuario.getEmail())
                 .rol(usuario.getRol())
+                .mensaje("Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.")
                 .build();
+    }
+
+    @Transactional
+    public String verificarCuenta(String token) {
+        Usuario usuario = usuarioRepository.findByTokenVerificacion(token)
+                .orElseThrow(() -> new RuntimeException(
+                        "Este enlace ya fue utilizado o no es válido. Si ya verificaste tu cuenta antes, puedes iniciar sesión con normalidad."));
+
+        if (Boolean.TRUE.equals(usuario.getActivo())) {
+            return "Esta cuenta ya había sido verificada. Ya puedes iniciar sesión.";
+        }
+
+        if (usuario.getTokenExpiracion() == null || usuario.getTokenExpiracion().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("El enlace de verificación expiró. Solicita uno nuevo.");
+        }
+
+        usuario.setActivo(true);
+        usuario.setTokenVerificacion(null);
+        usuario.setTokenExpiracion(null);
+        usuarioRepository.save(usuario);
+
+        return "Cuenta verificada correctamente. Ya puedes iniciar sesión.";
     }
 }
