@@ -41,9 +41,11 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        if (Boolean.FALSE.equals(usuario.getActivo())) {
-            throw new RuntimeException("Debes verificar tu correo antes de iniciar sesión.");
-        }
+        // TODO [PRODUCCIÓN]: Descomentar estas líneas para hacer la verificación de correo obligatoria.
+        // En desarrollo se permite el acceso sin verificar para facilitar las pruebas.
+        // if (Boolean.FALSE.equals(usuario.getActivo())) {
+        //     throw new RuntimeException("Debes verificar tu correo antes de iniciar sesión.");
+        // }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         String token = jwtUtil.generateToken(userDetails);
@@ -161,3 +163,30 @@ public class AuthService {
         return "Cuenta verificada correctamente. Ya puedes iniciar sesión.";
     }
 }
+
+// =============================================================================
+// TODO — PENDIENTES PARA PRODUCCIÓN
+// =============================================================================
+// [AUTH]
+//   - Activar verificación obligatoria de correo en login() (ver comentario arriba).
+//   - Rotar credenciales SMTP de Gmail en application.properties y moverlas
+//     a variables de entorno (.env / secrets) antes de subir a producción.
+//   - Agregar endpoint POST /api/auth/resend-verification para reenviar correo.
+//   - Agregar endpoint POST /api/auth/forgot-password para recuperación de contraseña.
+//
+// [FRONTEND — REGISTRO (register.component.ts)]
+//   - Rediseñar página de registro más fiel al wireframe (dos columnas, pasos).
+//   - Quitar el campo "Nombre del niño/a" del registro; ese dato va en el
+//     dashboard del padre al crear el primer perfil de hijo.
+//   - Reemplazar emojis 🐻🦊 del selector de rol por íconos más profesionales
+//     (ej. Material Icons: supervisor_account / school).
+//   - Después del registro exitoso, redirigir automáticamente al login en vez de
+//     mostrar el mensaje "Revisa tu correo" y esperar que el usuario haga clic.
+//
+// [FRONTEND — LANDING PAGE]
+//   - Corregir "6 juegos cognitivos adaptativos" → "12 juegos cognitivos adaptativos".
+//
+// [FRONTEND — VERIFICACIÓN DE CORREO]
+//   - Crear ruta /auth/verify en Angular con un VerifyComponent que lea el token
+//     de la URL y llame a GET /api/auth/verify?token=... para activar la cuenta.
+// =============================================================================
