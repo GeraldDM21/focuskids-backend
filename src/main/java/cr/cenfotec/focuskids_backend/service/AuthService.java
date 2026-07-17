@@ -76,7 +76,9 @@ public class AuthService {
             usuarioExistente.setTokenExpiracion(LocalDateTime.now().plusHours(24));
             usuarioRepository.save(usuarioExistente);
 
-            emailService.enviarCorreoVerificacion(usuarioExistente.getEmail(), usuarioExistente.getNombre(), nuevoToken);
+            try {
+                emailService.enviarCorreoVerificacion(usuarioExistente.getEmail(), usuarioExistente.getNombre(), nuevoToken);
+            } catch (Exception ignored) { /* No bloquear el registro si el correo falla */ }
 
             return AuthResponse.builder()
                     .usuarioId(usuarioExistente.getId())
@@ -130,7 +132,9 @@ public class AuthService {
             default -> { /* NINO no tiene perfil de usuario directo */ }
         }
 
-        emailService.enviarCorreoVerificacion(usuario.getEmail(), usuario.getNombre(), token);
+        try {
+            emailService.enviarCorreoVerificacion(usuario.getEmail(), usuario.getNombre(), token);
+        } catch (Exception ignored) { /* No bloquear el registro si el correo falla */ }
 
         return AuthResponse.builder()
                 .usuarioId(usuario.getId())
