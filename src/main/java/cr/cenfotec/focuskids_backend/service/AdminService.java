@@ -1,8 +1,10 @@
 package cr.cenfotec.focuskids_backend.service;
 
 import cr.cenfotec.focuskids_backend.model.LogAuditoria;
+import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.Usuario;
 import cr.cenfotec.focuskids_backend.repository.LogAuditoriaRepository;
+import cr.cenfotec.focuskids_backend.repository.PerfilNinoRepository;
 import cr.cenfotec.focuskids_backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.List;
 public class AdminService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PerfilNinoRepository perfilNinoRepository;
     private final LogAuditoriaRepository logAuditoriaRepository;
 
     public List<Usuario> listarUsuarios() {
@@ -31,6 +34,10 @@ public class AdminService {
         Usuario usuario = obtenerUsuario(id);
         usuario.setActivo(!Boolean.TRUE.equals(usuario.getActivo()));
         return usuarioRepository.save(usuario);
+    }
+
+    public List<PerfilNino> listarNinos() {
+        return perfilNinoRepository.findAll();
     }
 
     public List<LogAuditoria> obtenerLogs() {
