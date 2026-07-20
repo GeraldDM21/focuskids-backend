@@ -1,5 +1,6 @@
 package cr.cenfotec.focuskids_backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,12 +22,12 @@ public class AsignacionPerfil {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asignacion_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "docente", "fechaCreacion"})
     private Asignacion asignacion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "perfil_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore                          // redundante: ya sabemos el perfilId
     private PerfilNino perfil;
 
     @Column(name = "sesiones_completadas")
