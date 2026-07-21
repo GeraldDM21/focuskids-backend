@@ -23,6 +23,11 @@ public class PerfilNinoController {
         return ResponseEntity.ok(perfilNinoService.obtenerPorPadre(padreId));
     }
 
+    @GetMapping("/docente/{docenteUsuarioId}")
+    public ResponseEntity<List<PerfilNino>> obtenerPorDocente(@PathVariable Integer docenteUsuarioId) {
+        return ResponseEntity.ok(perfilNinoService.obtenerPorDocente(docenteUsuarioId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PerfilNino> obtenerPorId(@PathVariable Integer id) {
         return ResponseEntity.ok(perfilNinoService.obtenerPorId(id));

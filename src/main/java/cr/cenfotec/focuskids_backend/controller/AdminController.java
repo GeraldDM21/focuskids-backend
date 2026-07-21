@@ -1,6 +1,7 @@
 package cr.cenfotec.focuskids_backend.controller;
 
 import cr.cenfotec.focuskids_backend.model.LogAuditoria;
+import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.Usuario;
 import cr.cenfotec.focuskids_backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,11 @@ public class AdminController {
     @PutMapping("/usuarios/{id}/toggle-activo")
     public ResponseEntity<Usuario> toggleActivo(@PathVariable Integer id) {
         return ResponseEntity.ok(adminService.toggleActivo(id));
+    }
+
+    @GetMapping("/ninos")
+    public ResponseEntity<List<PerfilNino>> listarNinos() {
+        return ResponseEntity.ok(adminService.listarNinos());
     }
 
     @GetMapping("/logs")
