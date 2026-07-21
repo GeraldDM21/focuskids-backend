@@ -4,6 +4,7 @@ import cr.cenfotec.focuskids_backend.model.*;
 import cr.cenfotec.focuskids_backend.service.ReporteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/reportes")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('PADRE', 'DOCENTE', 'ADMINISTRADOR')")
 public class ReporteController {
 
     private final ReporteService reporteService;
