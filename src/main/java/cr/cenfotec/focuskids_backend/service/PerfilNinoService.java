@@ -56,4 +56,8 @@ public class PerfilNinoService {
     public void eliminar(Integer id) {
         perfilNinoRepository.deleteById(id);
     }
+
+    public List<PerfilNino> obtenerPorDocente(Integer usuarioId) {
+        return perfilNinoRepository.findByDocenteUsuarioId(usuarioId);
+    }
 }

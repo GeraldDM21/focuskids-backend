@@ -21,6 +21,11 @@ public class PerfilNino {
     @JoinColumn(name = "padre_id", nullable = false)
     private PadreTutor padre;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "docente_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Docente docente;
+
     @Column(name = "nombre", nullable = false, length = 100)
     private String nombre;
 
