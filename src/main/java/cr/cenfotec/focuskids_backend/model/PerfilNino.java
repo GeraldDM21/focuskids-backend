@@ -35,4 +35,8 @@ public class PerfilNino {
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
+
+    // CA-05: volumen de efectos de sonido del juego (0/25/50/75/100), persistido por perfil
+    @Column(name = "volumen", nullable = false)
+    private Integer volumen = 75;
 }
