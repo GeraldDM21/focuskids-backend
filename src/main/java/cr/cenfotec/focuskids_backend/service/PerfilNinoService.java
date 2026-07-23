@@ -53,6 +53,19 @@ public class PerfilNinoService {
         return perfilNinoRepository.save(perfil);
     }
 
+    // CA-05: persistir el nivel de volumen de efectos de sonido (0/25/50/75/100)
+    private static final List<Integer> NIVELES_VOLUMEN_VALIDOS = List.of(0, 25, 50, 75, 100);
+
+    @Transactional
+    public PerfilNino actualizarVolumen(Integer id, Integer volumen) {
+        if (volumen == null || !NIVELES_VOLUMEN_VALIDOS.contains(volumen)) {
+            throw new IllegalArgumentException("Nivel de volumen inválido: " + volumen + ". Valores permitidos: " + NIVELES_VOLUMEN_VALIDOS);
+        }
+        PerfilNino perfil = obtenerPorId(id);
+        perfil.setVolumen(volumen);
+        return perfilNinoRepository.save(perfil);
+    }
+
     public void eliminar(Integer id) {
         perfilNinoRepository.deleteById(id);
     }
