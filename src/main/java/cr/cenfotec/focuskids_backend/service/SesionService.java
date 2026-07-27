@@ -1,5 +1,6 @@
 package cr.cenfotec.focuskids_backend.service;
 
+import cr.cenfotec.focuskids_backend.dto.juego.FinalizarSesionRequest;
 import cr.cenfotec.focuskids_backend.model.*;
 import cr.cenfotec.focuskids_backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -41,12 +43,39 @@ public class SesionService {
     }
 
     @Transactional
-    public SesionJuego finalizarSesion(Integer sesionId, Integer puntaje) {
+    public SesionJuego finalizarSesion(Integer sesionId, FinalizarSesionRequest req) {
         SesionJuego sesion = sesionJuegoRepository.findById(sesionId)
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada: " + sesionId));
-        sesion.setFin(LocalDateTime.now());
-        sesion.setPuntaje(puntaje);
+
+        LocalDateTime fin = LocalDateTime.now();
+        sesion.setFin(fin);
         sesion.setCompletada(true);
+
+        // ── CA-01: métricas básicas ───────────────────────────────────────
+        sesion.setPuntaje(req.getPuntaje());
+        sesion.setTotalIntentos(req.getTotalIntentos());
+        sesion.setTotalAciertos(req.getTotalAciertos());
+        sesion.setPorcentajeAciertos(req.getPorcentajeAciertos());
+        sesion.setTiempoRespuestaPromedioMs(req.getTiempoRespuestaPromedioMs());
+        sesion.setRachaMaxAciertos(req.getRachaMaxAciertos());
+
+        // ── CA-01: duración calculada desde inicio ────────────────────────
+        if (sesion.getInicio() != null) {
+            long segundos = ChronoUnit.SECONDS.between(sesion.getInicio(), fin);
+            sesion.setDuracionSesionSegundos((int) segundos);
+        }
+
+        // ── CA-02: versión de configuración ──────────────────────────────
+        sesion.setConfigVersion(req.getConfigVersion());
+
+        // ── CA-05: concentración baja ─────────────────────────────────────
+        sesion.setSesionConcentracionBaja(
+                req.getSesionConcentracionBaja() != null && req.getSesionConcentracionBaja()
+        );
+
+        // ── CA-09: fallos por zona (JSON guardado como texto) ─────────────
+        sesion.setIntentosFallidosPorZona(req.getIntentosFallidosPorZona());
+
         return sesionJuegoRepository.save(sesion);
     }
 

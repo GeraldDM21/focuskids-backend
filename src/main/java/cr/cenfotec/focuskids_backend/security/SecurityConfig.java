@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/juegos/**").authenticated()
                 .requestMatchers("/api/perfil/**").authenticated()
+                .requestMatchers("/api/sesiones/internal/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/sesiones/**").authenticated()
                 .requestMatchers("/api/reportes/**").authenticated()
                 .anyRequest().authenticated()

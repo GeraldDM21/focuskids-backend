@@ -1,5 +1,6 @@
 package cr.cenfotec.focuskids_backend.controller;
 
+import cr.cenfotec.focuskids_backend.dto.juego.FinalizarSesionRequest;
 import cr.cenfotec.focuskids_backend.model.SesionJuego;
 import cr.cenfotec.focuskids_backend.model.SessionClickEvent;
 import cr.cenfotec.focuskids_backend.service.SesionService;
@@ -30,8 +31,8 @@ public class SesionController {
 
     @PutMapping("/{id}/finalizar")
     public ResponseEntity<SesionJuego> finalizar(@PathVariable Integer id,
-                                                  @RequestBody Map<String, Integer> body) {
-        return ResponseEntity.ok(sesionService.finalizarSesion(id, body.get("puntaje")));
+                                                  @RequestBody FinalizarSesionRequest req) {
+        return ResponseEntity.ok(sesionService.finalizarSesion(id, req));
     }
 
     @PostMapping("/{id}/eventos")
@@ -47,6 +48,14 @@ public class SesionController {
 
     @GetMapping("/{id}/eventos")
     public ResponseEntity<List<SessionClickEvent>> obtenerEventos(@PathVariable Integer id) {
+        return ResponseEntity.ok(sesionService.obtenerEventos(id));
+    }
+
+    // ── CA-10: endpoint interno para Motor de IA ──────────────────────────
+    // Acceso restringido solo a ADMINISTRADOR (servicios internos usan credenciales de admin)
+    @GetMapping("/internal/metrics/session/{id}/clicks")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<List<SessionClickEvent>> obtenerClicksInterno(@PathVariable Integer id) {
         return ResponseEntity.ok(sesionService.obtenerEventos(id));
     }
 }

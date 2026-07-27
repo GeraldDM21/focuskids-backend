@@ -35,4 +35,8 @@ public class SessionClickEvent {
 
     @Column(name = "fue_acierto")
     private Boolean fueAcierto;
+
+    // ── CA-08: tiempo desde que aparece el elemento hasta que el niño lo toca ──
+    @Column(name = "tiempo_reaccion_elemento_ms")
+    private Long tiempoReaccionElementoMs;
 }
