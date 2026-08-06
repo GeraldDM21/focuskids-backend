@@ -1,17 +1,22 @@
 package cr.cenfotec.focuskids_backend.controller;
 
+import cr.cenfotec.focuskids_backend.dto.UsuarioEditRequest;
 import cr.cenfotec.focuskids_backend.model.LogAuditoria;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.Usuario;
 import cr.cenfotec.focuskids_backend.service.AdminService;
+import cr.cenfotec.focuskids_backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -27,9 +32,20 @@ public class AdminController {
 
     // ── Usuarios ──────────────────────────────────────────────────────────────
 
+    /** CA-01: lista simple (compatibilidad). */
     @GetMapping("/usuarios")
     public ResponseEntity<List<Usuario>> listarUsuarios() {
         return ResponseEntity.ok(adminService.listarUsuarios());
+    }
+
+    /** CA-01: búsqueda paginada con filtros. */
+    @GetMapping("/usuarios/buscar")
+    public ResponseEntity<Page<Usuario>> buscarUsuarios(
+            @RequestParam(defaultValue = "")  String q,
+            @RequestParam(defaultValue = "")  String rol,
+            @RequestParam(defaultValue = "0") int    page,
+            @AuthenticationPrincipal UserDetails me) {
+        return ResponseEntity.ok(adminService.buscarUsuarios(q, rol, page));
     }
 
     @GetMapping("/usuarios/{id}")
@@ -37,11 +53,42 @@ public class AdminController {
         return ResponseEntity.ok(adminService.obtenerUsuario(id));
     }
 
+    /** CA-03: activa o desactiva un usuario. */
     @PutMapping("/usuarios/{id}/toggle-activo")
     public ResponseEntity<Usuario> toggleActivo(
             @PathVariable Integer id,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails me) {
         return ResponseEntity.ok(adminService.toggleActivo(id, obtenerIp(request)));
+    }
+
+    /**
+     * CA-02: editar nombre, rol y/o estado de un usuario.
+     * CA-05: log de auditoría registrado en el servicio.
+     */
+    @PutMapping("/usuarios/{id}")
+    public ResponseEntity<Usuario> editarUsuario(
+            @PathVariable Integer id,
+            @RequestBody UsuarioEditRequest request,
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal UserDetails me) {
+        Integer adminId = adminService.getIdPorEmail(me.getUsername());
+        return ResponseEntity.ok(
+                adminService.editarUsuario(id, request, adminId, obtenerIp(httpRequest)));
+    }
+
+    /**
+     * CA-04: eliminar usuario con doble validación de perfiles activos.
+     * CA-05: log de auditoría registrado en el servicio.
+     */
+    @DeleteMapping("/usuarios/{id}")
+    public ResponseEntity<Void> eliminarUsuario(
+            @PathVariable Integer id,
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal UserDetails me) {
+        Integer adminId = adminService.getIdPorEmail(me.getUsername());
+        adminService.eliminarUsuario(id, adminId, obtenerIp(httpRequest));
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/ninos")

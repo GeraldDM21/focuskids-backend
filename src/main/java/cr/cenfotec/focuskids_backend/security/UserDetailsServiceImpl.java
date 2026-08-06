@@ -23,9 +23,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
 
+        // CA-03: enabled=activo → cuenta suspendida → isEnabled()=false en el filtro JWT
+        boolean activo = Boolean.TRUE.equals(usuario.getActivo());
         return new User(
                 usuario.getEmail(),
                 usuario.getPasswordHash(),
+                activo,          // enabled
+                true,            // accountNonExpired
+                true,            // credentialsNonExpired
+                true,            // accountNonLocked
                 List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name()))
         );
     }

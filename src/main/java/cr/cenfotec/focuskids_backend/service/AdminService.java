@@ -1,8 +1,10 @@
 package cr.cenfotec.focuskids_backend.service;
 
+import cr.cenfotec.focuskids_backend.dto.UsuarioEditRequest;
 import cr.cenfotec.focuskids_backend.model.LogAuditoria;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.Usuario;
+import cr.cenfotec.focuskids_backend.model.UsuarioRol;
 import cr.cenfotec.focuskids_backend.repository.LogAuditoriaRepository;
 import cr.cenfotec.focuskids_backend.repository.PerfilNinoRepository;
 import cr.cenfotec.focuskids_backend.repository.UsuarioRepository;
@@ -10,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -32,6 +36,10 @@ public class AdminService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     // ── Usuarios ──────────────────────────────────────────────────────────────
+
+    public Integer getIdPorEmail(String email) {
+        return usuarioRepository.findByEmail(email).map(Usuario::getId).orElse(null);
+    }
 
     public List<Usuario> listarUsuarios() {
         return usuarioRepository.findAll();
@@ -67,6 +75,83 @@ public class AdminService {
 
     public List<PerfilNino> listarNinos() {
         return perfilNinoRepository.findAll();
+    }
+
+    // ── Usuarios: búsqueda, edición, eliminación ──────────────────────────────
+
+    /** CA-01: búsqueda paginada por nombre/email y filtro por rol. */
+    public Page<Usuario> buscarUsuarios(String q, String rol, int page) {
+        UsuarioRol rolEnum = (rol != null && !rol.isBlank())
+                ? UsuarioRol.valueOf(rol) : null;
+        String query = (q != null && !q.isBlank()) ? q : null;
+        return usuarioRepository.buscar(query, rolEnum, PageRequest.of(page, PAGE_SIZE));
+    }
+
+    /**
+     * CA-02: editar nombre, rol y/o estado de un usuario.
+     * CA-05: registra log de auditoría.
+     */
+    @Transactional
+    public Usuario editarUsuario(Integer id, UsuarioEditRequest req, Integer adminId, String ip) {
+        Usuario usuario = obtenerUsuario(id);
+        StringBuilder cambios = new StringBuilder();
+
+        if (req.nombre() != null && !req.nombre().isBlank()) {
+            cambios.append("nombre '%s'→'%s' ".formatted(usuario.getNombre(), req.nombre()));
+            usuario.setNombre(req.nombre().trim());
+        }
+        if (req.rol() != null && !req.rol().isBlank()) {
+            UsuarioRol nuevoRol = UsuarioRol.valueOf(req.rol());
+            cambios.append("rol '%s'→'%s' ".formatted(usuario.getRol(), nuevoRol));
+            usuario.setRol(nuevoRol);
+        }
+        if (req.activo() != null) {
+            cambios.append("activo '%s'→'%s' ".formatted(usuario.getActivo(), req.activo()));
+            usuario.setActivo(req.activo());
+        }
+
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        auditoriaService.registrar(adminId, AuditoriaService.USUARIO_MODIFICADO,
+                "Usuario",
+                "Usuario ID %d (%s): %s".formatted(id, usuario.getEmail(), cambios),
+                ip, AuditoriaService.EXITO);
+        return guardado;
+    }
+
+    /**
+     * CA-04: eliminar usuario con validación de perfiles activos.
+     * CA-05: registra log de auditoría.
+     */
+    @Transactional
+    public void eliminarUsuario(Integer id, Integer adminId, String ip) {
+        Usuario usuario = obtenerUsuario(id);
+
+        // No permitir eliminar al último administrador activo
+        if (usuario.getRol() == UsuarioRol.ADMINISTRADOR) {
+            long adminsActivos = usuarioRepository.countByRolAndActivo(
+                    UsuarioRol.ADMINISTRADOR, true);
+            if (adminsActivos <= 1) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No puedes eliminar el único administrador activo del sistema.");
+            }
+        }
+
+        // CA-04: verificar perfiles activos
+        boolean tieneNinosPadre   = usuarioRepository.tieneNinosActivosComoPadre(id);
+        boolean tieneNinosDocente = usuarioRepository.tieneNinosActivosComoDocente(id);
+
+        if (tieneNinosPadre || tieneNinosDocente) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Debes reasignar o eliminar los perfiles de niños antes de eliminar esta cuenta.");
+        }
+
+        String desc = "Usuario eliminado: ID %d, email %s, rol %s"
+                .formatted(id, usuario.getEmail(), usuario.getRol());
+        usuarioRepository.delete(usuario);
+
+        auditoriaService.registrar(adminId, "USUARIO_ELIMINADO",
+                "Usuario", desc, ip, AuditoriaService.EXITO);
     }
 
     // ── Logs (legacy, sin paginación) ─────────────────────────────────────────
