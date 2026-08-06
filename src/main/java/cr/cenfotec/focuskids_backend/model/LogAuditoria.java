@@ -28,6 +28,12 @@ public class LogAuditoria {
     @Column(name = "entidad", length = 100)
     private String entidad;
 
+    @Column(name = "descripcion", columnDefinition = "TEXT")
+    private String descripcion;
+
+    @Column(name = "resultado", length = 10)
+    private String resultado;   // EXITO | FALLO
+
     @Column(name = "fecha")
     private LocalDateTime fecha;
 
