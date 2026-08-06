@@ -22,6 +22,22 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String remitente;
 
+    public void enviarResumenSemanal(String destinatario, String nombrePadre, String htmlBody) {
+        try {
+            MimeMessage mensaje = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensaje, "UTF-8");
+            helper.setTo(destinatario);
+            helper.setFrom(remitente);
+            helper.setSubject("📊 Resumen semanal de progreso – FocusKids");
+            helper.setText(htmlBody, true);
+            mailSender.send(mensaje);
+            log.info("Resumen semanal enviado a {}", destinatario);
+        } catch (Exception e) {
+            log.error("No se pudo enviar el resumen semanal a {}: {}", destinatario, e.getMessage(), e);
+            throw new RuntimeException("No se pudo enviar el resumen semanal.");
+        }
+    }
+
     public void enviarCorreoVerificacion(String destinatario, String nombre, String token) {
         String link = frontendUrl + "/auth/verify?token=" + token;
 

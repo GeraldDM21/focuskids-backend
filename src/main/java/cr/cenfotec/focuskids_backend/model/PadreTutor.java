@@ -26,4 +26,8 @@ public class PadreTutor {
 
     @Column(name = "relacion_con_nino", length = 50)
     private String relacionConNino;
+
+    @Column(name = "preferencia_resumen_semanal", nullable = false)
+    @Builder.Default
+    private Boolean preferenciaResumenSemanal = true;
 }
