@@ -1,0 +1,24 @@
+version: "3"
+
+# ── Reemplazar YOUR_AUTHTOKEN con el token de https://dashboard.ngrok.com ──
+authtoken: YOUR_AUTHTOKEN
+
+# CA-02: ngrok expone solo HTTPS (TLS 1.2 / 1.3 — gestionado por ngrok)
+# CA-03: el tráfico HTTP queda sin túnel → solo HTTPS disponible
+tunnels:
+
+  # Backend — Spring Boot (puerto 8080)
+  focuskids-api:
+    proto: http
+    addr: 8080
+    schemes:
+      - https          # solo HTTPS; omitir "http" rechaza peticiones sin cifrar
+    inspect: false     # deshabilitar inspector en producción
+
+  # Frontend — Angular (puerto 4200 en dev, o servido por nginx en prod)
+  focuskids-frontend:
+    proto: http
+    addr: 4200
+    schemes:
+      - https
+    inspect: false
