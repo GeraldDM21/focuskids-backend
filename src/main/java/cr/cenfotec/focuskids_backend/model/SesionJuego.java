@@ -73,4 +73,9 @@ public class SesionJuego {
     // ── CA-09: fallos agrupados por cuadrante de pantalla (JSON) ─────────
     @Column(name = "intentos_fallidos_por_zona", columnDefinition = "TEXT")
     private String intentosFallidosPorZona;
+
+    // ── Motor de IA / CA-01: sesión completa y con métricas utilizables ──
+    // Ver SesionService#calcularSesionValida para el criterio de validez.
+    @Column(name = "sesion_valida")
+    private Boolean sesionValida;
 }
