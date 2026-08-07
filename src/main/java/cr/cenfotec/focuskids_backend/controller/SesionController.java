@@ -3,8 +3,10 @@ package cr.cenfotec.focuskids_backend.controller;
 import cr.cenfotec.focuskids_backend.dto.juego.FinalizarSesionRequest;
 import cr.cenfotec.focuskids_backend.model.SesionJuego;
 import cr.cenfotec.focuskids_backend.model.SessionClickEvent;
+import cr.cenfotec.focuskids_backend.service.IaRecomendacionService;
 import cr.cenfotec.focuskids_backend.service.SesionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -12,13 +14,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/sesiones")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('PADRE', 'DOCENTE', 'ADMINISTRADOR')")
 public class SesionController {
 
-    private final SesionService sesionService;
+    private final SesionService            sesionService;
+    private final IaRecomendacionService   iaService;
 
     @PostMapping("/iniciar")
     public ResponseEntity<SesionJuego> iniciar(@RequestBody Map<String, Integer> body) {
@@ -32,7 +36,18 @@ public class SesionController {
     @PutMapping("/{id}/finalizar")
     public ResponseEntity<SesionJuego> finalizar(@PathVariable Integer id,
                                                   @RequestBody FinalizarSesionRequest req) {
-        return ResponseEntity.ok(sesionService.finalizarSesion(id, req));
+        SesionJuego sesion = sesionService.finalizarSesion(id, req);
+
+        // Generar recomendación de nivel para la próxima sesión (best-effort)
+        try {
+            iaService.generarRecomendacion(
+                    sesion.getPerfil().getId(),
+                    sesion.getJuego().getId());
+        } catch (Exception e) {
+            log.warn("No se pudo generar recomendación IA para sesión {}: {}", id, e.getMessage());
+        }
+
+        return ResponseEntity.ok(sesion);
     }
 
     @PostMapping("/{id}/eventos")
