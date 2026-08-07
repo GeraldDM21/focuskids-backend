@@ -21,6 +21,7 @@ public class SesionService {
     private final PerfilNinoRepository perfilNinoRepository;
     private final JuegoRepository juegoRepository;
     private final NivelDificultadRepository nivelDificultadRepository;
+    private final IaEvaluacionService iaEvaluacionService;
 
     @Transactional
     public SesionJuego iniciarSesion(Integer perfilId, Integer juegoId, Integer nivelId) {
@@ -76,7 +77,32 @@ public class SesionService {
         // ── CA-09: fallos por zona (JSON guardado como texto) ─────────────
         sesion.setIntentosFallidosPorZona(req.getIntentosFallidosPorZona());
 
-        return sesionJuegoRepository.save(sesion);
+        // ── Motor de IA / CA-01: la sesión es "válida" para análisis si se
+        // completó y tiene métricas de aciertos utilizables ────────────────
+        sesion.setSesionValida(calcularSesionValida(sesion));
+
+        SesionJuego guardada = sesionJuegoRepository.save(sesion);
+
+        // ── CA-03/CA-04: dispara el análisis de tendencia en segundo plano.
+        // No bloquea esta respuesta; cualquier error queda sólo en logs.
+        iaEvaluacionService.evaluarAsync(
+                guardada.getPerfil().getId(),
+                guardada.getJuego().getId(),
+                guardada.getNivel().getId()
+        );
+
+        return guardada;
+    }
+
+    /**
+     * Criterio de validez de una sesión para el Motor de IA: debe estar
+     * completada y traer métricas reales de aciertos (evita dividir/analizar
+     * sobre sesiones abandonadas o sin intentos registrados).
+     */
+    private boolean calcularSesionValida(SesionJuego sesion) {
+        return Boolean.TRUE.equals(sesion.getCompletada())
+                && sesion.getTotalIntentos() != null && sesion.getTotalIntentos() > 0
+                && sesion.getPorcentajeAciertos() != null;
     }
 
     @Transactional
