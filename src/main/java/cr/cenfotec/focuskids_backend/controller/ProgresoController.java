@@ -11,6 +11,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Dashboard de progreso del niño para padre o docente.
+ *
+ * CA-01: datos de perfil + métricas (nombre, avatar, última sesión, juego más jugado,
+ *        nivel por juego, tendencia IA)
+ * CA-02: ventana de 4 semanas; respuesta rápida al delegar cálculo al servicio
+ * CA-03: el selector de perfil vive en el frontend; el endpoint acepta perfilId
+ * CA-04: actividadSemanal calculada en ProgresoService
+ * CA-05: la URL de historial completo la maneja el frontend (/padre/sesiones/{perfilId})
+ */
 @RestController
 @RequestMapping("/api/progreso")
 @RequiredArgsConstructor
@@ -19,7 +29,7 @@ public class ProgresoController {
     private final ProgresoService      progresoService;
     private final PerfilNinoRepository perfilRepo;
 
-    /** Progreso de un perfil específico */
+    /** GET /api/progreso/perfil/{perfilId} — Dashboard de un niño específico. */
     @GetMapping("/perfil/{perfilId}")
     @PreAuthorize("hasAnyRole('PADRE', 'DOCENTE', 'ADMINISTRADOR')")
     public ResponseEntity<ProgresoDashboardResponse> getProgresoPerfil(
@@ -27,7 +37,7 @@ public class ProgresoController {
         return ResponseEntity.ok(progresoService.getProgreso(perfilId));
     }
 
-    /** Todos los perfiles de un padre */
+    /** GET /api/progreso/padre/{padreUsuarioId} — Dashboard de todos los hijos del padre. */
     @GetMapping("/padre/{padreUsuarioId}")
     @PreAuthorize("hasAnyRole('PADRE', 'ADMINISTRADOR')")
     public ResponseEntity<List<ProgresoDashboardResponse>> getProgresoPadre(
@@ -36,7 +46,7 @@ public class ProgresoController {
         return ResponseEntity.ok(progresoService.getProgresoLista(perfiles));
     }
 
-    /** Todos los perfiles asignados a un docente */
+    /** GET /api/progreso/docente/{docenteUsuarioId} — Dashboard de todos los alumnos del docente. */
     @GetMapping("/docente/{docenteUsuarioId}")
     @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
     public ResponseEntity<List<ProgresoDashboardResponse>> getProgresoDocente(
