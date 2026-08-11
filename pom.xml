@@ -109,6 +109,13 @@
 			<version>0.12.6</version>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- RF-Historial CA-05: generación de reportes PDF (historial de sesiones) -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>2.0.31</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -23,9 +23,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
 
+        // enabled=true siempre: Spring Security solo valida contraseña aquí.
+        // El control de cuenta activa/suspendida lo maneja AuthService.login()
+        // (verificación de email) y JwtAuthenticationFilter (token válido).
+        // Así en desarrollo se puede loguear sin verificar correo, y en
+        // producción basta con descomentar la línea en AuthService.login().
         return new User(
                 usuario.getEmail(),
                 usuario.getPasswordHash(),
+                true,            // enabled — ver comentario arriba
+                true,            // accountNonExpired
+                true,            // credentialsNonExpired
+                true,            // accountNonLocked
                 List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name()))
         );
     }
