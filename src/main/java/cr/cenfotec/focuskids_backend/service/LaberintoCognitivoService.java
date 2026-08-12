@@ -122,10 +122,14 @@ public class LaberintoCognitivoService {
     public LaberintoResultadoResponse finalizarSesion(Integer sesionId, FinalizarLaberintoRequest request) {
         SesionJuego sesion = obtenerSesion(sesionId);
 
-        if (Boolean.TRUE.equals(sesion.getCompletada())) {
-            throw new IllegalStateException("La sesión ya fue finalizada");
-        }
-
+        // Nota: el frontend llama primero a SesionJuegoService.finalizarSesion()
+        // (endpoint genérico, que ya marca completada=true) y justo después a
+        // este endpoint dedicado con el detalle de Laberinto. Antes esto lanzaba
+        // una excepción si la llamada genérica llegaba primero (carrera entre
+        // dos peticiones HTTP separadas), lo que podía perder silenciosamente
+        // la Métrica detallada de Laberinto. Ahora se sigue procesando de forma
+        // idempotente: los campos de sesión se recalculan igual y la Métrica se
+        // actualiza (upsert) en vez de duplicarse.
         double eficiencia = request.getPasosUsadosTotal() == 0
                 ? 0
                 : Math.min(100.0, (request.getPasosOptimosTotal() * 100.0) / request.getPasosUsadosTotal());
@@ -148,13 +152,12 @@ public class LaberintoCognitivoService {
                 ? 0
                 : (double) request.getTiempoResolucionMsTotal() / request.getPasosUsadosTotal();
 
-        Metrica metrica = Metrica.builder()
-                .sesion(sesion)
-                .tiempoReaccionProm(decimal(tiempoPromedioPorPaso))
-                .precisionPct(decimal(eficiencia))
-                .errores(request.getCallejonesSinSalidaVisitadosTotal())
-                .zonaFallo(determinarZonaFallo(request))
-                .build();
+        Metrica metrica = metricaRepository.findBySesionId(sesion.getId())
+                .orElseGet(() -> Metrica.builder().sesion(sesion).build());
+        metrica.setTiempoReaccionProm(decimal(tiempoPromedioPorPaso));
+        metrica.setPrecisionPct(decimal(eficiencia));
+        metrica.setErrores(request.getCallejonesSinSalidaVisitadosTotal());
+        metrica.setZonaFallo(determinarZonaFallo(request));
 
         metricaRepository.save(metrica);
 

@@ -197,12 +197,14 @@ public class CascadaNumericaService {
     ) {
         SesionJuego sesion = obtenerSesion(sesionId);
 
-        if (Boolean.TRUE.equals(sesion.getCompletada())) {
-            throw new IllegalStateException(
-                    "La sesión ya fue finalizada"
-            );
-        }
-
+        // Nota: el frontend llama primero al endpoint genérico de finalizar
+        // sesión (que ya marca completada=true) y justo después a este
+        // endpoint dedicado con el detalle de Cascada Numérica. Antes esto
+        // lanzaba una excepción si la llamada genérica llegaba primero
+        // (carrera entre dos peticiones HTTP separadas), lo que podía perder
+        // silenciosamente la Métrica detallada de Cascada. Ahora se procesa
+        // de forma idempotente: la Métrica se actualiza (upsert) en vez de
+        // duplicarse o perderse.
         List<CascadaOperacionEvento> operaciones =
                 operacionRepository
                         .findBySesionIdOrderByNumeroOperacionAsc(
@@ -265,25 +267,12 @@ public class CascadaNumericaService {
 
         sesionJuegoRepository.save(sesion);
 
-        Metrica metrica = Metrica.builder()
-                .sesion(sesion)
-                .tiempoReaccionProm(
-                        decimal(tiempoPromedio)
-                )
-                .precisionPct(
-                        decimal(precision)
-                )
-                .errores(
-                        erroresCalculados +
-                                omisionesCalculadas
-                )
-                .zonaFallo(
-                        determinarZonaFallo(
-                                erroresCalculados,
-                                omisionesCalculadas
-                        )
-                )
-                .build();
+        Metrica metrica = metricaRepository.findBySesionId(sesion.getId())
+                .orElseGet(() -> Metrica.builder().sesion(sesion).build());
+        metrica.setTiempoReaccionProm(decimal(tiempoPromedio));
+        metrica.setPrecisionPct(decimal(precision));
+        metrica.setErrores(erroresCalculados + omisionesCalculadas);
+        metrica.setZonaFallo(determinarZonaFallo(erroresCalculados, omisionesCalculadas));
 
         metricaRepository.save(metrica);
 
