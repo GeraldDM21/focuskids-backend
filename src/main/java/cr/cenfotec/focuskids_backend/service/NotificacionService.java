@@ -1,6 +1,8 @@
 package cr.cenfotec.focuskids_backend.service;
 
+import cr.cenfotec.focuskids_backend.model.Juego;
 import cr.cenfotec.focuskids_backend.model.Notificacion;
+import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.Usuario;
 import cr.cenfotec.focuskids_backend.repository.NotificacionRepository;
 import cr.cenfotec.focuskids_backend.repository.UsuarioRepository;
@@ -35,6 +37,31 @@ public class NotificacionService {
                 .usuario(usuario)
                 .tipo(tipo)
                 .mensaje(mensaje)
+                .leida(false)
+                .fecha(LocalDateTime.now())
+                .build();
+
+        return notificacionRepository.save(notificacion);
+    }
+
+    /**
+     * CA-02/CA-03: variante usada por las alertas de regresión cognitiva,
+     * que además del mensaje llevan el niño, el juego y las sesiones a
+     * resaltar en el historial (para el botón "Ver detalle").
+     */
+    @Transactional
+    public Notificacion crearAlertaRegresion(Integer usuarioId, String tipo, String mensaje,
+                                             PerfilNino ninoPerfil, Juego juego, String sesionesResaltadas) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + usuarioId));
+
+        Notificacion notificacion = Notificacion.builder()
+                .usuario(usuario)
+                .tipo(tipo)
+                .mensaje(mensaje)
+                .ninoPerfil(ninoPerfil)
+                .juego(juego)
+                .sesionesResaltadas(sesionesResaltadas)
                 .leida(false)
                 .fecha(LocalDateTime.now())
                 .build();

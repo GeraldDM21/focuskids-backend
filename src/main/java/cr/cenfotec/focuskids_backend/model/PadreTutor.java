@@ -30,4 +30,10 @@ public class PadreTutor {
     @Column(name = "preferencia_resumen_semanal", nullable = false)
     @Builder.Default
     private Boolean preferenciaResumenSemanal = true;
+
+    // CA-05 (Notificaciones in-app): si es false, el padre sigue recibiendo
+    // las alertas en BD pero el badge de la campana no se muestra en el front.
+    @Column(name = "notificaciones_in_app_activas", nullable = false)
+    @Builder.Default
+    private Boolean notificacionesInAppActivas = true;
 }

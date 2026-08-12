@@ -18,7 +18,7 @@ public class PadreTutorController {
 
     /**
      * GET /api/padre/configuracion?usuarioId={id}
-     * Devuelve las preferencias del padre (incluyendo resumen semanal).
+     * Devuelve las preferencias del padre (resumen semanal y notificaciones in-app).
      */
     @GetMapping("/configuracion")
     @PreAuthorize("isAuthenticated()")
@@ -26,7 +26,8 @@ public class PadreTutorController {
         return padreTutorRepository.findByUsuarioId(usuarioId)
                 .map(p -> ResponseEntity.ok(Map.<String, Object>of(
                         "padreId", p.getId(),
-                        "preferenciaResumenSemanal", p.getPreferenciaResumenSemanal()
+                        "preferenciaResumenSemanal", p.getPreferenciaResumenSemanal(),
+                        "notificacionesInAppActivas", p.getNotificacionesInAppActivas()
                 )))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -53,6 +54,34 @@ public class PadreTutorController {
                     padreTutorRepository.save(padre);
                     return ResponseEntity.ok(Map.<String, Object>of(
                             "preferenciaResumenSemanal", activo
+                    ));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * PATCH /api/padre/notificaciones-in-app?usuarioId={id}
+     * CA-05: activa o desactiva el badge de notificaciones in-app.
+     * Las alertas se siguen registrando en BD independientemente de este valor.
+     * Body: { "activo": true | false }
+     */
+    @PatchMapping("/notificaciones-in-app")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> toggleNotificacionesInApp(
+            @RequestParam Integer usuarioId,
+            @RequestBody Map<String, Boolean> body) {
+
+        Boolean activo = body.get("activo");
+        if (activo == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return padreTutorRepository.findByUsuarioId(usuarioId)
+                .map(padre -> {
+                    padre.setNotificacionesInAppActivas(activo);
+                    padreTutorRepository.save(padre);
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "notificacionesInAppActivas", activo
                     ));
                 })
                 .orElse(ResponseEntity.notFound().build());
