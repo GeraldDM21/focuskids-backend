@@ -71,11 +71,12 @@ public class ReporteService {
     @Transactional(readOnly = true)
     public Page<HistorialSesionDTO> obtenerHistorialSesiones(
             Integer perfilId, Integer juegoId, String nivel,
-            LocalDateTime fechaDesde, LocalDateTime fechaHasta, int page) {
+            LocalDateTime fechaDesde, LocalDateTime fechaHasta,
+            Boolean soloCompletadas, int page) {
 
         PageRequest pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         Page<SesionJuego> entidades = sesionJuegoRepository.filtrarHistorial(
-                perfilId, juegoId, nivel, fechaDesde, fechaHasta, pageable);
+                perfilId, juegoId, nivel, fechaDesde, fechaHasta, soloCompletadas, pageable);
 
         // Mapear a DTO dentro de la transacción para que las relaciones
         // @ManyToOne (juego, nivel) estén disponibles sin LazyInitializationException.
@@ -167,7 +168,8 @@ public class ReporteService {
     /** CA-05: PDF del historial con los filtros actualmente aplicados (sin paginar). */
     public byte[] exportarHistorialPdf(
             Integer perfilId, Integer juegoId, String nivel,
-            LocalDateTime fechaDesde, LocalDateTime fechaHasta) {
+            LocalDateTime fechaDesde, LocalDateTime fechaHasta,
+            Boolean soloCompletadas) {
 
         PerfilNino perfil = perfilNinoRepository.findById(perfilId)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró el perfil infantil"));
@@ -180,7 +182,7 @@ public class ReporteService {
         }
 
         List<SesionJuego> sesiones = sesionJuegoRepository.filtrarHistorialSinPaginacion(
-                perfilId, juegoId, nivel, fechaDesde, fechaHasta);
+                perfilId, juegoId, nivel, fechaDesde, fechaHasta, soloCompletadas);
 
         return generarPdf(perfil, nombreJuegoFiltro, nivel, fechaDesde, fechaHasta, sesiones);
     }

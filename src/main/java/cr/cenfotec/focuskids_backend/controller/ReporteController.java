@@ -64,12 +64,13 @@ public class ReporteController {
             @RequestParam(required = false) String nivel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaDesde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta,
+            @RequestParam(required = false) Boolean soloCompletadas,
             @RequestParam(defaultValue = "0") int page) {
 
         return ResponseEntity.ok(reporteService.obtenerHistorialSesiones(
                 perfilId, juegoId,
                 (nivel != null && nivel.isBlank()) ? null : nivel,
-                fechaDesde, fechaHasta, page));
+                fechaDesde, fechaHasta, soloCompletadas, page));
     }
 
     /** CA-04: al expandir una sesión, comparación contra la sesión anterior del mismo juego. */
@@ -87,12 +88,13 @@ public class ReporteController {
             @RequestParam(required = false) Integer juegoId,
             @RequestParam(required = false) String nivel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta,
+            @RequestParam(required = false) Boolean soloCompletadas) {
 
         byte[] pdf = reporteService.exportarHistorialPdf(
                 perfilId, juegoId,
                 (nivel != null && nivel.isBlank()) ? null : nivel,
-                fechaDesde, fechaHasta);
+                fechaDesde, fechaHasta, soloCompletadas);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
