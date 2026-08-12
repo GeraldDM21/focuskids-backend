@@ -1,6 +1,7 @@
 package cr.cenfotec.focuskids_backend.controller;
 
 import cr.cenfotec.focuskids_backend.dto.reporte.ComparacionSesionResponse;
+import cr.cenfotec.focuskids_backend.dto.reporte.HistorialSesionDTO;
 import cr.cenfotec.focuskids_backend.model.*;
 import cr.cenfotec.focuskids_backend.service.ReporteService;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +58,7 @@ public class ReporteController {
 
     /** CA-01/CA-02/CA-03: lista paginada (10 por página) con filtros combinables. */
     @GetMapping("/perfil/{perfilId}/historial")
-    public ResponseEntity<Page<SesionJuego>> obtenerHistorial(
+    public ResponseEntity<Page<HistorialSesionDTO>> obtenerHistorial(
             @PathVariable Integer perfilId,
             @RequestParam(required = false) Integer juegoId,
             @RequestParam(required = false) String nivel,
