@@ -18,17 +18,40 @@ public class AsignacionService {
     private final AsignacionPerfilRepository  asignacionPerfilRepository;
     private final DocenteRepository           docenteRepository;
     private final PerfilNinoRepository        perfilNinoRepository;
+    private final NotificacionService         notificacionService;
 
-    /** Crea una asignación y la enlaza automáticamente a todos los alumnos del docente. */
+    /**
+     * Crea una asignación. Si perfilId es null se distribuye a todos los alumnos activos
+     * del docente; si viene, se asigna únicamente a ese alumno (debe pertenecer a su clase).
+     * En ambos casos se notifica al padre de cada alumno afectado.
+     */
     @Transactional
-    public Asignacion crear(Integer docenteUsuarioId, Asignacion datos) {
+    public Asignacion crear(Integer docenteUsuarioId, Asignacion datos, Integer perfilId) {
         Docente docente = docenteRepository.findByUsuarioId(docenteUsuarioId)
                 .orElseThrow(() -> new RuntimeException("Docente no encontrado"));
+
+        if (datos.getFechaLimite() != null && datos.getFechaLimite().isBefore(LocalDate.now())) {
+            throw new RuntimeException("La fecha límite no puede ser anterior a hoy.");
+        }
+
         datos.setDocente(docente);
+        datos.setCantidadAlumnos(null);
+        datos.setAlumnoNombre(null);
         Asignacion guardada = asignacionRepository.save(datos);
 
-        // Crear una entrada AsignacionPerfil para cada alumno del docente
-        List<PerfilNino> alumnos = perfilNinoRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        List<PerfilNino> alumnos;
+        if (perfilId != null) {
+            PerfilNino p = perfilNinoRepository.findById(perfilId)
+                    .orElseThrow(() -> new RuntimeException("Alumno no encontrado: " + perfilId));
+            if (p.getDocente() == null || !p.getDocente().getUsuario().getId().equals(docenteUsuarioId)) {
+                throw new RuntimeException("Ese alumno no pertenece a tu clase.");
+            }
+            alumnos = List.of(p);
+        } else {
+            alumnos = perfilNinoRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        }
+
+        String docenteEmail = docente.getUsuario().getEmail();
         for (PerfilNino p : alumnos) {
             AsignacionPerfil ap = AsignacionPerfil.builder()
                     .asignacion(guardada)
@@ -37,12 +60,28 @@ public class AsignacionService {
                     .completada(false)
                     .build();
             asignacionPerfilRepository.save(ap);
+
+            Integer padreUsuarioId = p.getPadre().getUsuario().getId();
+            String mensaje = "Nueva asignación para " + p.getNombre() + ": " + guardada.getTitulo();
+            notificacionService.crearDetallada(
+                    padreUsuarioId, "ASIGNACION", guardada.getTitulo(), mensaje,
+                    guardada.getDescripcion(), guardada.getFechaLimite(), null, docenteEmail
+            );
         }
+
+        guardada.setCantidadAlumnos(alumnos.size());
+        if (alumnos.size() == 1) guardada.setAlumnoNombre(alumnos.get(0).getNombre());
         return guardada;
     }
 
     public List<Asignacion> listarPorDocente(Integer docenteUsuarioId) {
-        return asignacionRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        List<Asignacion> lista = asignacionRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        lista.forEach(a -> {
+            List<AsignacionPerfil> asignados = asignacionPerfilRepository.findByAsignacionId(a.getId());
+            a.setCantidadAlumnos(asignados.size());
+            if (asignados.size() == 1) a.setAlumnoNombre(asignados.get(0).getPerfil().getNombre());
+        });
+        return lista;
     }
 
     /** Retorna las asignaciones pendientes de un perfil de niño con su progreso. */
@@ -76,6 +115,9 @@ public class AsignacionService {
     /** Permite mover la fecha límite de una asignación, por ejemplo desde el calendario. */
     @Transactional
     public Asignacion actualizarFecha(Integer id, LocalDate nuevaFecha) {
+        if (nuevaFecha.isBefore(LocalDate.now())) {
+            throw new RuntimeException("La fecha límite no puede ser anterior a hoy.");
+        }
         Asignacion a = asignacionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Asignacion no encontrada: " + id));
         a.setFechaLimite(nuevaFecha);

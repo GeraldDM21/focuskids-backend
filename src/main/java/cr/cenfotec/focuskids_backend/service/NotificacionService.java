@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -35,6 +37,30 @@ public class NotificacionService {
                 .usuario(usuario)
                 .tipo(tipo)
                 .mensaje(mensaje)
+                .leida(false)
+                .fecha(LocalDateTime.now())
+                .build();
+
+        return notificacionRepository.save(notificacion);
+    }
+
+    /** Notificación enriquecida (asignaciones, citas, recordatorios) con detalle para mostrar al padre. */
+    @Transactional
+    public Notificacion crearDetallada(Integer usuarioId, String tipo, String titulo, String mensaje,
+                                        String descripcion, LocalDate fechaEvento, LocalTime horaEvento,
+                                        String contactoEmail) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + usuarioId));
+
+        Notificacion notificacion = Notificacion.builder()
+                .usuario(usuario)
+                .tipo(tipo)
+                .titulo(titulo)
+                .mensaje(mensaje)
+                .descripcion(descripcion)
+                .fechaEvento(fechaEvento)
+                .horaEvento(horaEvento)
+                .contactoEmail(contactoEmail)
                 .leida(false)
                 .fecha(LocalDateTime.now())
                 .build();

@@ -45,6 +45,14 @@ public class Asignacion {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
+    /** Calculado en el servicio (no persistido): a cuántos alumnos se asignó realmente. */
+    @Transient
+    private Integer cantidadAlumnos;
+
+    /** Calculado en el servicio (no persistido): si se asignó a un solo alumno, su nombre. */
+    @Transient
+    private String alumnoNombre;
+
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
