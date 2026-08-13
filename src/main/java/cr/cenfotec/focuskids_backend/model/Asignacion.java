@@ -43,6 +43,10 @@ public class Asignacion {
     @Column(name = "fecha_limite")
     private LocalDate fechaLimite;
 
+    /** Tema de vocabulario para Palabras Ocultas (CIENCIAS, GEOGRAFIA, MATEMATICAS). Null para otros juegos. */
+    @Column(name = "tema", length = 50)
+    private String tema;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
