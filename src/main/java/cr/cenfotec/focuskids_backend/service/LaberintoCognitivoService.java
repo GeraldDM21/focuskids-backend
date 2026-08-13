@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 // RF-29: Laberinto Cognitivo — planificación y función ejecutiva.
@@ -41,6 +42,7 @@ public class LaberintoCognitivoService {
     private final PerfilNinoRepository perfilNinoRepository;
     private final LaberintoPasoEventoRepository pasoRepository;
     private final MetricaRepository metricaRepository;
+    private final NivelAsignadoRepository nivelAsignadoRepository;
 
     @Transactional
     public IniciarLaberintoResponse iniciarSesion(IniciarLaberintoRequest request) {
@@ -58,7 +60,14 @@ public class LaberintoCognitivoService {
             throw new IllegalStateException("Laberinto Cognitivo se encuentra desactivado");
         }
 
-        NivelDificultad nivelInicial = obtenerNivel(juego.getId(), NIVEL_MINIMO);
+        // El niño solo puede jugar el nivel que el docente/padre le fijó: si hay
+        // un NivelAsignado, la sesión arranca directo en ese nivel en vez de
+        // NIVEL_MINIMO, y registrarPaso/finalizarSesion lo mantienen fijo ahí
+        // durante toda la sesión (ver limitarNivelSesion).
+        Integer nivelBloqueado = obtenerNivelBloqueado(perfil.getId(), juego.getId());
+        int nivelInicioSesion = nivelBloqueado != null ? nivelBloqueado : NIVEL_MINIMO;
+
+        NivelDificultad nivelInicial = obtenerNivel(juego.getId(), nivelInicioSesion);
 
         SesionJuego sesion = SesionJuego.builder()
                 .perfil(perfil)
@@ -77,9 +86,9 @@ public class LaberintoCognitivoService {
                 .perfilId(perfil.getId())
                 .juegoId(juego.getId())
                 .nivelId(nivelInicial.getId())
-                .nivelInicial(NIVEL_MINIMO)
-                .tamanoMapa(TAMANO_BASE + NIVEL_MINIMO)
-                .obstaculosDinamicos(NIVEL_MINIMO >= NIVEL_OBSTACULOS_DESDE)
+                .nivelInicial(nivelInicioSesion)
+                .tamanoMapa(TAMANO_BASE + nivelInicioSesion)
+                .obstaculosDinamicos(nivelInicioSesion >= NIVEL_OBSTACULOS_DESDE)
                 .tiempoDespliegueMs(TIEMPO_DESPLIEGUE_MS)
                 .build();
     }
@@ -104,7 +113,7 @@ public class LaberintoCognitivoService {
                 .posicionY(request.getPosicionY())
                 .esCallejonSinSalida(request.getEsCallejonSinSalida())
                 .tiempoDesdeInicioMs(request.getTiempoDesdeInicioMs())
-                .nivel(limitarNivel(request.getNivel()))
+                .nivel(limitarNivelSesion(sesion, request.getNivel()))
                 .build();
 
         LaberintoPasoEvento guardado = pasoRepository.save(evento);
@@ -134,11 +143,16 @@ public class LaberintoCognitivoService {
                 ? 0
                 : Math.min(100.0, (request.getPasosOptimosTotal() * 100.0) / request.getPasosUsadosTotal());
 
-        int puntaje = calcularPuntaje(request, eficiencia);
+        // Si hay un nivel bloqueado para este perfil+juego, el nivel máximo
+        // alcanzado que reporte el cliente se ignora — la sesión completa se
+        // jugó (y se puntúa) en el nivel fijado por el docente/padre.
+        int nivelMaximoEfectivo = limitarNivelSesion(sesion, request.getNivelMaximoAlcanzado());
+
+        int puntaje = calcularPuntaje(request, eficiencia, nivelMaximoEfectivo);
 
         NivelDificultad nivelFinal = obtenerNivel(
                 sesion.getJuego().getId(),
-                limitarNivel(request.getNivelMaximoAlcanzado())
+                nivelMaximoEfectivo
         );
 
         sesion.setFin(LocalDateTime.now());
@@ -170,7 +184,7 @@ public class LaberintoCognitivoService {
                 .tiempoResolucionMsTotal(request.getTiempoResolucionMsTotal())
                 .callejonesSinSalidaVisitadosTotal(request.getCallejonesSinSalidaVisitadosTotal())
                 .planificoEnPrimerMovimiento(request.getPlanificoEnPrimerMovimiento())
-                .nivelMaximoAlcanzado(limitarNivel(request.getNivelMaximoAlcanzado()))
+                .nivelMaximoAlcanzado(nivelMaximoEfectivo)
                 .puntaje(puntaje)
                 .completada(true)
                 .build();
@@ -206,10 +220,10 @@ public class LaberintoCognitivoService {
         }
     }
 
-    private int calcularPuntaje(FinalizarLaberintoRequest request, double eficiencia) {
+    private int calcularPuntaje(FinalizarLaberintoRequest request, double eficiencia, int nivelMaximoAlcanzado) {
         int puntaje = (int) Math.round(eficiencia * 10)
                 + request.getRondasCompletadas() * 30
-                + limitarNivel(request.getNivelMaximoAlcanzado()) * 40
+                + nivelMaximoAlcanzado * 40
                 - request.getCallejonesSinSalidaVisitadosTotal() * 15;
 
         return Math.max(0, puntaje);
@@ -249,6 +263,35 @@ public class LaberintoCognitivoService {
 
     private int limitarNivel(int nivel) {
         return Math.max(NIVEL_MINIMO, Math.min(NIVEL_MAXIMO, nivel));
+    }
+
+    /**
+     * Nivel numérico (1-5) fijado por docente/padre para este perfil+juego,
+     * o null si no hay bloqueo. FACIL/MEDIO/DIFICIL de NivelAsignado se
+     * mapean al valor representativo de cada franja (igual agrupación que
+     * obtenerNivel: 1-2 FACIL, 3 MEDIO, 4-5 DIFICIL).
+     */
+    private Integer obtenerNivelBloqueado(Integer perfilId, Integer juegoId) {
+        Optional<NivelAsignado> bloqueo = nivelAsignadoRepository.findByPerfilIdAndJuegoId(perfilId, juegoId);
+        if (bloqueo.isEmpty()) {
+            return null;
+        }
+        return switch (bloqueo.get().getNivel()) {
+            case "FACIL" -> Integer.valueOf(NIVEL_MINIMO);
+            case "MEDIO" -> Integer.valueOf(3);
+            case "DIFICIL" -> Integer.valueOf(NIVEL_MAXIMO);
+            default -> null;
+        };
+    }
+
+    /**
+     * Si el perfil tiene un nivel bloqueado para este juego, el nivel se fuerza
+     * a ese valor sin importar lo que reporte el cliente; si no, se aplica el
+     * límite normal [NIVEL_MINIMO, NIVEL_MAXIMO].
+     */
+    private int limitarNivelSesion(SesionJuego sesion, int nivel) {
+        Integer bloqueado = obtenerNivelBloqueado(sesion.getPerfil().getId(), sesion.getJuego().getId());
+        return bloqueado != null ? bloqueado : limitarNivel(nivel);
     }
 
     private BigDecimal decimal(double valor) {

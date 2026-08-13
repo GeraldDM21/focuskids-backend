@@ -9,12 +9,14 @@ import cr.cenfotec.focuskids_backend.dto.juego.RegistrarIntentoLabResponse;
 import cr.cenfotec.focuskids_backend.model.Juego;
 import cr.cenfotec.focuskids_backend.model.LabCienciasIntento;
 import cr.cenfotec.focuskids_backend.model.Metrica;
+import cr.cenfotec.focuskids_backend.model.NivelAsignado;
 import cr.cenfotec.focuskids_backend.model.NivelDificultad;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.SesionJuego;
 import cr.cenfotec.focuskids_backend.repository.JuegoRepository;
 import cr.cenfotec.focuskids_backend.repository.LabCienciasIntentoRepository;
 import cr.cenfotec.focuskids_backend.repository.MetricaRepository;
+import cr.cenfotec.focuskids_backend.repository.NivelAsignadoRepository;
 import cr.cenfotec.focuskids_backend.repository.NivelDificultadRepository;
 import cr.cenfotec.focuskids_backend.repository.PerfilNinoRepository;
 import cr.cenfotec.focuskids_backend.repository.SesionJuegoRepository;
@@ -52,6 +54,8 @@ public class LabCienciasService {
 
     private final MetricaRepository metricaRepository;
 
+    private final NivelAsignadoRepository nivelAsignadoRepository;
+
     @Transactional
     public IniciarLabResponse iniciarSesion(
             IniciarLabRequest request
@@ -84,6 +88,17 @@ public class LabCienciasService {
             throw new IllegalStateException(
                     "Lab de Ciencias está desactivado"
             );
+        }
+
+        // El niño solo puede jugar el nivel que el docente/padre le fijó para
+        // este juego (EXPERTO no es bloqueable como tal; un bloqueo en DIFICIL
+        // es también su techo).
+        String nivelBloqueado = nivelAsignadoRepository
+                .findByPerfilIdAndJuegoId(request.getPerfilId(), juego.getId())
+                .map(NivelAsignado::getNivel)
+                .orElse(null);
+        if (nivelBloqueado != null) {
+            nivel = nivelBloqueado;
         }
 
         NivelDificultad nivelBd = obtenerNivelBd(
