@@ -19,17 +19,35 @@ public class AsignacionService {
     private final DocenteRepository           docenteRepository;
     private final PerfilNinoRepository        perfilNinoRepository;
 
-    /** Crea una asignación y la enlaza automáticamente a todos los alumnos del docente. */
+    /** Crea una asignación. Si datos.perfilId viene indicado, se enlaza
+     *  únicamente a ese alumno (debe pertenecer a la clase del docente);
+     *  si no, se enlaza automáticamente a todos los alumnos del docente
+     *  (comportamiento original, para tareas generales de toda la clase). */
     @Transactional
     public Asignacion crear(Integer docenteUsuarioId, Asignacion datos) {
         Docente docente = docenteRepository.findByUsuarioId(docenteUsuarioId)
                 .orElseThrow(() -> new RuntimeException("Docente no encontrado"));
+
+        List<PerfilNino> alumnosClase = perfilNinoRepository.findByDocenteUsuarioId(docenteUsuarioId);
+
+        List<PerfilNino> destinatarios;
+        Integer perfilId = datos.getPerfilId();
+        datos.setPerfilId(null); // campo de solo-request, no se persiste en la fila de Asignacion
+        if (perfilId != null) {
+            destinatarios = alumnosClase.stream()
+                    .filter(p -> p.getId().equals(perfilId))
+                    .toList();
+            if (destinatarios.isEmpty()) {
+                throw new RuntimeException("El alumno indicado no pertenece a la clase de este docente");
+            }
+        } else {
+            destinatarios = alumnosClase;
+        }
+
         datos.setDocente(docente);
         Asignacion guardada = asignacionRepository.save(datos);
 
-        // Crear una entrada AsignacionPerfil para cada alumno del docente
-        List<PerfilNino> alumnos = perfilNinoRepository.findByDocenteUsuarioId(docenteUsuarioId);
-        for (PerfilNino p : alumnos) {
+        for (PerfilNino p : destinatarios) {
             AsignacionPerfil ap = AsignacionPerfil.builder()
                     .asignacion(guardada)
                     .perfil(p)
@@ -41,8 +59,25 @@ public class AsignacionService {
         return guardada;
     }
 
+    /** Lista las asignaciones del docente, indicando para cada una a qué
+     *  alumno(s) quedó enlazada (para distinguir tareas generales de las
+     *  dirigidas a un alumno puntual). */
+    @Transactional(readOnly = true)
     public List<Asignacion> listarPorDocente(Integer docenteUsuarioId) {
-        return asignacionRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        List<Asignacion> asignaciones = asignacionRepository.findByDocenteUsuarioId(docenteUsuarioId);
+        int totalAlumnosClase = perfilNinoRepository.findByDocenteUsuarioId(docenteUsuarioId).size();
+        for (Asignacion a : asignaciones) {
+            List<AsignacionPerfil> enlaces = asignacionPerfilRepository.findByAsignacionId(a.getId());
+            // Solo se marca como "específica" cuando no cubre a toda la clase actual:
+            // así una tarea creada para 1 alumno en una clase de 1 sigue viéndose como
+            // dirigida a ese alumno (se muestra el nombre igual), y evitamos falsos
+            // "general" si luego se unen más alumnos a la clase.
+            List<String> nombres = enlaces.stream().map(ap -> ap.getPerfil().getNombre()).toList();
+            if (enlaces.size() < totalAlumnosClase || enlaces.size() == 1) {
+                a.setAlumnosAsignados(nombres);
+            }
+        }
+        return asignaciones;
     }
 
     /** Retorna las asignaciones pendientes de un perfil de niño con su progreso. */

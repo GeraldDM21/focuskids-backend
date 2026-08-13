@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
@@ -44,6 +45,19 @@ public class Asignacion {
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
+
+    /** Campo de solo-request (no se persiste): si el docente indica un
+     *  alumno puntual, la asignación se enlaza únicamente a ese perfil en
+     *  vez de a toda la clase. Ver AsignacionService.crear(). */
+    @Transient
+    private Integer perfilId;
+
+    /** Campo de solo-respuesta (no se persiste): nombres de los alumnos
+     *  enlazados a esta asignación, para que el docente vea si es general
+     *  (toda la clase) o específica de un alumno. Se rellena solo al listar
+     *  desde AsignacionService.listarPorDocente(). */
+    @Transient
+    private List<String> alumnosAsignados;
 
     @PrePersist
     protected void onCreate() {

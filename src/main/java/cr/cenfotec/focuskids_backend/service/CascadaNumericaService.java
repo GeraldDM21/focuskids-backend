@@ -27,9 +27,13 @@ public class CascadaNumericaService {
     private static final int NIVEL_MINIMO = 1;
     private static final int NIVEL_MAXIMO = 5;
 
-    private static final int VELOCIDAD_INICIAL_MS = 4000;
-    private static final int VELOCIDAD_MINIMA_MS = 1800;
-    private static final int VELOCIDAD_MAXIMA_MS = 4500;
+    // Ajustado a pedido: los números caían muy rápido y no daba tiempo de leer
+    // la operación y responder. Se sube el punto de partida y el piso mínimo
+    // (aun en el nivel más difícil nunca cae más rápido que VELOCIDAD_MINIMA_MS).
+    // Segundo ajuste: seguía sintiéndose rápido, se sube de nuevo.
+    private static final int VELOCIDAD_INICIAL_MS = 8500;
+    private static final int VELOCIDAD_MINIMA_MS = 4500;
+    private static final int VELOCIDAD_MAXIMA_MS = 9500;
 
     private static final Set<String> TIPOS_VALIDOS =
             Set.of("ACIERTO", "ERROR", "OMISION");
