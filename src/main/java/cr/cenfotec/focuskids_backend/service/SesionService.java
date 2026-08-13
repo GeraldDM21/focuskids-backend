@@ -27,6 +27,7 @@ public class SesionService {
     private final PerfilNinoRepository perfilNinoRepository;
     private final JuegoRepository juegoRepository;
     private final NivelDificultadRepository nivelDificultadRepository;
+    private final NivelAsignadoRepository nivelAsignadoRepository;
     private final IaEvaluacionService iaEvaluacionService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -36,8 +37,18 @@ public class SesionService {
                 .orElseThrow(() -> new RuntimeException("Perfil no encontrado: " + perfilId));
         Juego juego = juegoRepository.findById(juegoId)
                 .orElseThrow(() -> new RuntimeException("Juego no encontrado: " + juegoId));
-        NivelDificultad nivel = nivelDificultadRepository.findById(nivelId)
-                .orElseThrow(() -> new RuntimeException("Nivel no encontrado: " + nivelId));
+
+        // El niño solo puede jugar el nivel que el docente/padre le fijó para este
+        // juego: si existe un NivelAsignado, se ignora el nivelId que mande el
+        // cliente y se fuerza el nivel bloqueado, sin importar qué haya elegido
+        // (o intentado forzar) desde la UI.
+        Integer nivelIdEfectivo = nivelAsignadoRepository.findByPerfilIdAndJuegoId(perfilId, juegoId)
+                .flatMap(bloqueo -> nivelDificultadRepository.findByJuegoIdAndNivel(juegoId, bloqueo.getNivel()))
+                .map(NivelDificultad::getId)
+                .orElse(nivelId);
+
+        NivelDificultad nivel = nivelDificultadRepository.findById(nivelIdEfectivo)
+                .orElseThrow(() -> new RuntimeException("Nivel no encontrado: " + nivelIdEfectivo));
 
         SesionJuego sesion = SesionJuego.builder()
                 .perfil(perfil)

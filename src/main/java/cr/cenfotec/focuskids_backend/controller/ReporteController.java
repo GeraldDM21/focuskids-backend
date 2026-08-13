@@ -1,6 +1,7 @@
 package cr.cenfotec.focuskids_backend.controller;
 
 import cr.cenfotec.focuskids_backend.dto.reporte.ComparacionSesionResponse;
+import cr.cenfotec.focuskids_backend.dto.reporte.HistorialSesionDTO;
 import cr.cenfotec.focuskids_backend.model.*;
 import cr.cenfotec.focuskids_backend.service.ReporteService;
 import lombok.RequiredArgsConstructor;
@@ -57,18 +58,19 @@ public class ReporteController {
 
     /** CA-01/CA-02/CA-03: lista paginada (10 por página) con filtros combinables. */
     @GetMapping("/perfil/{perfilId}/historial")
-    public ResponseEntity<Page<SesionJuego>> obtenerHistorial(
+    public ResponseEntity<Page<HistorialSesionDTO>> obtenerHistorial(
             @PathVariable Integer perfilId,
             @RequestParam(required = false) Integer juegoId,
             @RequestParam(required = false) String nivel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaDesde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta,
+            @RequestParam(required = false) Boolean soloCompletadas,
             @RequestParam(defaultValue = "0") int page) {
 
         return ResponseEntity.ok(reporteService.obtenerHistorialSesiones(
                 perfilId, juegoId,
                 (nivel != null && nivel.isBlank()) ? null : nivel,
-                fechaDesde, fechaHasta, page));
+                fechaDesde, fechaHasta, soloCompletadas, page));
     }
 
     /** CA-04: al expandir una sesión, comparación contra la sesión anterior del mismo juego. */
@@ -86,12 +88,13 @@ public class ReporteController {
             @RequestParam(required = false) Integer juegoId,
             @RequestParam(required = false) String nivel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta,
+            @RequestParam(required = false) Boolean soloCompletadas) {
 
         byte[] pdf = reporteService.exportarHistorialPdf(
                 perfilId, juegoId,
                 (nivel != null && nivel.isBlank()) ? null : nivel,
-                fechaDesde, fechaHasta);
+                fechaDesde, fechaHasta, soloCompletadas);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)

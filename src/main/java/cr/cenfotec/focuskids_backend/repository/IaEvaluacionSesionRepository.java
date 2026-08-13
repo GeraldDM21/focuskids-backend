@@ -17,4 +17,7 @@ public interface IaEvaluacionSesionRepository extends JpaRepository<IaEvaluacion
 
     Optional<IaEvaluacionSesion> findFirstByNinoPerfilIdAndJuegoIdAndNivelOrderByFechaEvaluacionDesc(
             Integer ninoPerfilId, Integer juegoId, String nivel);
+
+    List<IaEvaluacionSesion> findTop3ByNinoPerfilIdAndJuegoIdAndNivelOrderByFechaEvaluacionDesc(
+            Integer ninoPerfilId, Integer juegoId, String nivel);
 }

@@ -8,6 +8,7 @@ import cr.cenfotec.focuskids_backend.repository.*;
 import cr.cenfotec.focuskids_backend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -32,11 +33,23 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final EmailService emailService;
+    private final AuditoriaService auditoriaService;
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (BadCredentialsException ex) {
+            // Registrar intento fallido (usuario puede no existir, así que usuarioId = null)
+            usuarioRepository.findByEmail(request.getEmail()).ifPresentOrElse(
+                u -> auditoriaService.registrar(u.getId(), AuditoriaService.LOGIN_FALLIDO,
+                        "Intento de login fallido para: " + request.getEmail(), null, AuditoriaService.FALLO),
+                () -> auditoriaService.registrar(null, AuditoriaService.LOGIN_FALLIDO,
+                        "Intento de login con email inexistente: " + request.getEmail(), null, AuditoriaService.FALLO)
+            );
+            throw ex;
+        }
 
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -49,6 +62,9 @@ public class AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         String token = jwtUtil.generateToken(userDetails);
+
+        auditoriaService.registrar(usuario.getId(), AuditoriaService.LOGIN_EXITOSO,
+                "Login exitoso: " + usuario.getEmail(), null, AuditoriaService.EXITO);
 
         return AuthResponse.builder()
                 .token(token)

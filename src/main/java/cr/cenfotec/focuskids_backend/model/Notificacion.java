@@ -50,6 +50,22 @@ public class Notificacion {
     @Column(name = "contacto_email", length = 150)
     private String contactoEmail;
 
+    // CA-02: datos estructurados para el panel de la campana (nombre del
+    // niño y juego afectado) — nulos para notificaciones genéricas que no
+    // provienen de una alerta de regresión.
+    @ManyToOne
+    @JoinColumn(name = "nino_perfil_id")
+    private PerfilNino ninoPerfil;
+
+    @ManyToOne
+    @JoinColumn(name = "juego_id")
+    private Juego juego;
+
+    // CA-03: ids (separados por coma) de las SesionJuego que se deben
+    // resaltar al abrir el historial desde "Ver detalle".
+    @Column(name = "sesiones_resaltadas", length = 100)
+    private String sesionesResaltadas;
+
     @Column(name = "leida")
     private Boolean leida;
 

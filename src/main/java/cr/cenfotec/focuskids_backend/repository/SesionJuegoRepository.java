@@ -31,18 +31,20 @@ public interface SesionJuegoRepository extends JpaRepository<SesionJuego, Intege
     @Query("""
         SELECT s FROM SesionJuego s
         WHERE s.perfil.id = :perfilId
-          AND (:juegoId    IS NULL OR s.juego.id = :juegoId)
-          AND (:nivel      IS NULL OR s.nivel.nivel = :nivel)
-          AND (:fechaDesde IS NULL OR s.inicio >= :fechaDesde)
-          AND (:fechaHasta IS NULL OR s.inicio <= :fechaHasta)
+          AND (:juegoId         IS NULL OR s.juego.id = :juegoId)
+          AND (:nivel           IS NULL OR s.nivel.nivel = :nivel)
+          AND (:fechaDesde      IS NULL OR s.inicio >= :fechaDesde)
+          AND (:fechaHasta      IS NULL OR s.inicio <= :fechaHasta)
+          AND (:soloCompletadas IS NULL OR s.completada = :soloCompletadas)
         ORDER BY s.inicio DESC
         """)
     Page<SesionJuego> filtrarHistorial(
-        @Param("perfilId")   Integer perfilId,
-        @Param("juegoId")    Integer juegoId,
-        @Param("nivel")      String nivel,
-        @Param("fechaDesde") LocalDateTime fechaDesde,
-        @Param("fechaHasta") LocalDateTime fechaHasta,
+        @Param("perfilId")        Integer perfilId,
+        @Param("juegoId")         Integer juegoId,
+        @Param("nivel")           String nivel,
+        @Param("fechaDesde")      LocalDateTime fechaDesde,
+        @Param("fechaHasta")      LocalDateTime fechaHasta,
+        @Param("soloCompletadas") Boolean soloCompletadas,
         Pageable pageable
     );
 
@@ -50,18 +52,20 @@ public interface SesionJuegoRepository extends JpaRepository<SesionJuego, Intege
     @Query("""
         SELECT s FROM SesionJuego s
         WHERE s.perfil.id = :perfilId
-          AND (:juegoId    IS NULL OR s.juego.id = :juegoId)
-          AND (:nivel      IS NULL OR s.nivel.nivel = :nivel)
-          AND (:fechaDesde IS NULL OR s.inicio >= :fechaDesde)
-          AND (:fechaHasta IS NULL OR s.inicio <= :fechaHasta)
+          AND (:juegoId         IS NULL OR s.juego.id = :juegoId)
+          AND (:nivel           IS NULL OR s.nivel.nivel = :nivel)
+          AND (:fechaDesde      IS NULL OR s.inicio >= :fechaDesde)
+          AND (:fechaHasta      IS NULL OR s.inicio <= :fechaHasta)
+          AND (:soloCompletadas IS NULL OR s.completada = :soloCompletadas)
         ORDER BY s.inicio DESC
         """)
     List<SesionJuego> filtrarHistorialSinPaginacion(
-        @Param("perfilId")   Integer perfilId,
-        @Param("juegoId")    Integer juegoId,
-        @Param("nivel")      String nivel,
-        @Param("fechaDesde") LocalDateTime fechaDesde,
-        @Param("fechaHasta") LocalDateTime fechaHasta
+        @Param("perfilId")        Integer perfilId,
+        @Param("juegoId")         Integer juegoId,
+        @Param("nivel")           String nivel,
+        @Param("fechaDesde")      LocalDateTime fechaDesde,
+        @Param("fechaHasta")      LocalDateTime fechaHasta,
+        @Param("soloCompletadas") Boolean soloCompletadas
     );
 
     // CA-04: sesión inmediatamente anterior (mismo perfil + juego) para la comparación al expandir.

@@ -3,6 +3,7 @@ package cr.cenfotec.focuskids_backend.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,28 @@ public class EmailService {
         } catch (Exception e) {
             log.error("No se pudo enviar el resumen semanal a {}: {}", destinatario, e.getMessage(), e);
             throw new RuntimeException("No se pudo enviar el resumen semanal.");
+        }
+    }
+
+
+    public void enviarAlertaRegresion(String destinatario, String nombreNino, String nombreJuego,
+                                      String htmlBody, byte[] graficoPng) {
+        try {
+            MimeMessage mensaje = mailSender.createMimeMessage();
+            // multipart = true: necesario para poder adjuntar el PNG.
+            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+            helper.setTo(destinatario);
+            helper.setFrom(remitente);
+            helper.setSubject("Atención: %s necesita apoyo en %s".formatted(nombreNino, nombreJuego));
+            helper.setText(htmlBody, true);
+            helper.addAttachment("tendencia-" + nombreJuego.replaceAll("\\s+", "-").toLowerCase() + ".png",
+                    new ByteArrayResource(graficoPng));
+            mailSender.send(mensaje);
+            log.info("Alerta de regresión enviada a {} ({} / {})", destinatario, nombreNino, nombreJuego);
+        } catch (Exception e) {
+            log.error("No se pudo enviar la alerta de regresión a {} ({} / {}): {}",
+                    destinatario, nombreNino, nombreJuego, e.getMessage(), e);
+            throw new RuntimeException("No se pudo enviar la alerta de regresión.", e);
         }
     }
 
