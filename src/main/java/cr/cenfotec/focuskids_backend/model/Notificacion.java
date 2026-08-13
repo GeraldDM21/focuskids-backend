@@ -3,7 +3,9 @@ package cr.cenfotec.focuskids_backend.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
@@ -25,8 +27,28 @@ public class Notificacion {
     @Column(name = "tipo", length = 50)
     private String tipo;
 
+    /** Título corto para la tarjeta de notificación (ej. título de la asignación/cita). */
+    @Column(name = "titulo", length = 200)
+    private String titulo;
+
     @Column(name = "mensaje", columnDefinition = "TEXT")
     private String mensaje;
+
+    /** Descripción/detalle opcional del origen (descripción de la asignación, cita o recordatorio). */
+    @Column(name = "descripcion", columnDefinition = "TEXT")
+    private String descripcion;
+
+    /** Fecha del evento relacionado (fecha límite de la asignación, o fecha de la cita/recordatorio). */
+    @Column(name = "fecha_evento")
+    private LocalDate fechaEvento;
+
+    /** Hora del evento relacionado, si aplica (citas). */
+    @Column(name = "hora_evento")
+    private LocalTime horaEvento;
+
+    /** Correo del docente para que el padre pueda escribirle directamente. */
+    @Column(name = "contacto_email", length = 150)
+    private String contactoEmail;
 
     // CA-02: datos estructurados para el panel de la campana (nombre del
     // niño y juego afectado) — nulos para notificaciones genéricas que no

@@ -19,13 +19,14 @@ public class AsignacionController {
 
     private final AsignacionService asignacionService;
 
-    /** Docente crea una asignación para toda su clase. */
+    /** Docente crea una asignación. Si perfilId viene, se asigna solo a ese alumno; si no, a toda la clase. */
     @PostMapping("/docente/{docenteUsuarioId}")
     @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
     public ResponseEntity<Asignacion> crear(
             @PathVariable Integer docenteUsuarioId,
+            @RequestParam(required = false) Integer perfilId,
             @RequestBody Asignacion datos) {
-        return ResponseEntity.ok(asignacionService.crear(docenteUsuarioId, datos));
+        return ResponseEntity.ok(asignacionService.crear(docenteUsuarioId, datos, perfilId));
     }
 
     /** Lista asignaciones del docente (con progreso global). */

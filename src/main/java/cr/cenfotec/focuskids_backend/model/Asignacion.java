@@ -57,11 +57,17 @@ public class Asignacion {
     private Integer perfilId;
 
     /** Campo de solo-respuesta (no se persiste): nombres de los alumnos
-     *  enlazados a esta asignación, para que el docente vea si es general
-     *  (toda la clase) o específica de un alumno. Se rellena solo al listar
-     *  desde AsignacionService.listarPorDocente(). */
+     *  enlazados a esta asignación. Se rellena al listar. */
     @Transient
     private List<String> alumnosAsignados;
+
+    /** Calculado en el servicio (no persistido): a cuántos alumnos se asignó realmente. */
+    @Transient
+    private Integer cantidadAlumnos;
+
+    /** Calculado en el servicio (no persistido): si se asignó a un solo alumno, su nombre. */
+    @Transient
+    private String alumnoNombre;
 
     @PrePersist
     protected void onCreate() {
