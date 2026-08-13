@@ -12,6 +12,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -39,6 +40,7 @@ public class CascadaNumericaService {
     private final PerfilNinoRepository perfilNinoRepository;
     private final CascadaOperacionEventoRepository operacionRepository;
     private final MetricaRepository metricaRepository;
+    private final NivelAsignadoRepository nivelAsignadoRepository;
 
     @Transactional
     public IniciarCascadaResponse iniciarSesion(
@@ -72,8 +74,14 @@ public class CascadaNumericaService {
             );
         }
 
+        // El niño solo puede jugar el nivel que el docente/padre le fijó: si hay
+        // un NivelAsignado, la sesión arranca directo ahí en vez de NIVEL_MINIMO,
+        // y calcularAjuste/finalizarSesion lo mantienen fijo el resto de la sesión.
+        Integer nivelBloqueado = obtenerNivelBloqueado(perfil.getId(), juego.getId());
+        int nivelInicioSesion = nivelBloqueado != null ? nivelBloqueado : NIVEL_MINIMO;
+
         NivelDificultad nivelInicial =
-                obtenerNivel(juego.getId(), NIVEL_MINIMO);
+                obtenerNivel(juego.getId(), nivelInicioSesion);
 
         SesionJuego sesion = SesionJuego.builder()
                 .perfil(perfil)
@@ -93,7 +101,7 @@ public class CascadaNumericaService {
                 .perfilId(perfil.getId())
                 .juegoId(juego.getId())
                 .nivelId(nivelInicial.getId())
-                .nivelInicial(NIVEL_MINIMO)
+                .nivelInicial(nivelInicioSesion)
                 .velocidadCaidaMs(VELOCIDAD_INICIAL_MS)
                 .maxOperaciones(MAX_OPERACIONES)
                 .duracionMaximaSegundos(
@@ -171,7 +179,8 @@ public class CascadaNumericaService {
                 calcularAjuste(
                         ultimas,
                         request.getNivel(),
-                        request.getVelocidadCaidaMs()
+                        request.getVelocidadCaidaMs(),
+                        obtenerNivelBloqueado(sesion.getPerfil().getId(), sesion.getJuego().getId())
                 );
 
         return RegistrarOperacionResponse.builder()
@@ -247,17 +256,23 @@ public class CascadaNumericaService {
                         .average()
                         .orElse(0);
 
+        // Si hay un nivel bloqueado para este perfil+juego, el nivel final que
+        // reporte el cliente se ignora — la sesión completa se jugó (y se
+        // puntúa) en el nivel fijado por el docente/padre.
+        Integer nivelBloqueado = obtenerNivelBloqueado(sesion.getPerfil().getId(), sesion.getJuego().getId());
+        int nivelFinalEfectivo = nivelBloqueado != null ? nivelBloqueado : limitarNivel(request.getNivelFinal());
+
         int puntaje = calcularPuntaje(
                 aciertosCalculados,
                 erroresCalculados,
                 omisionesCalculadas,
                 request.getMaxCombo(),
-                request.getNivelFinal()
+                nivelFinalEfectivo
         );
 
         NivelDificultad nivelFinal = obtenerNivel(
                 sesion.getJuego().getId(),
-                limitarNivel(request.getNivelFinal())
+                nivelFinalEfectivo
         );
 
         sesion.setFin(LocalDateTime.now());
@@ -293,7 +308,7 @@ public class CascadaNumericaService {
                 )
                 .maxCombo(request.getMaxCombo())
                 .nivelFinal(
-                        limitarNivel(request.getNivelFinal())
+                        nivelFinalEfectivo
                 )
                 .puntaje(puntaje)
                 .completada(true)
@@ -451,8 +466,22 @@ public class CascadaNumericaService {
     private AjusteDificultad calcularAjuste(
             List<CascadaOperacionEvento> ultimas,
             int nivelActual,
-            int velocidadActual
+            int velocidadActual,
+            Integer nivelBloqueado
     ) {
+        // Si el docente/padre fijó un nivel para este perfil+juego, el ajuste
+        // adaptativo queda desactivado: el nivel se mantiene siempre en el
+        // valor bloqueado (nunca sube ni baja durante la sesión).
+        if (nivelBloqueado != null) {
+            double precisionActual = calcularPrecision(ultimas);
+            return new AjusteDificultad(
+                    nivelBloqueado,
+                    limitarVelocidad(velocidadActual),
+                    redondear(precisionActual),
+                    false
+            );
+        }
+
         if (ultimas.size() < 5) {
             double precisionParcial =
                     calcularPrecision(ultimas);
@@ -612,6 +641,25 @@ public class CascadaNumericaService {
                 NIVEL_MINIMO,
                 Math.min(NIVEL_MAXIMO, nivel)
         );
+    }
+
+    /**
+     * Nivel numérico (1-5) fijado por docente/padre para este perfil+juego,
+     * o null si no hay bloqueo. FACIL/MEDIO/DIFICIL de NivelAsignado se
+     * mapean al valor representativo de cada franja (igual agrupación que
+     * obtenerNivel: 1-2 FACIL, 3 MEDIO, 4-5 DIFICIL).
+     */
+    private Integer obtenerNivelBloqueado(Integer perfilId, Integer juegoId) {
+        Optional<NivelAsignado> bloqueo = nivelAsignadoRepository.findByPerfilIdAndJuegoId(perfilId, juegoId);
+        if (bloqueo.isEmpty()) {
+            return null;
+        }
+        return switch (bloqueo.get().getNivel()) {
+            case "FACIL" -> Integer.valueOf(NIVEL_MINIMO);
+            case "MEDIO" -> Integer.valueOf(3);
+            case "DIFICIL" -> Integer.valueOf(NIVEL_MAXIMO);
+            default -> null;
+        };
     }
 
     private int limitarVelocidad(int velocidad) {
