@@ -14,15 +14,6 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Motor de IA — Historia: análisis de tendencias de sesiones.
- *
- * CA-01: exige mínimo 3 sesiones válidas del mismo niño+juego+nivel.
- * CA-02: pendiente de regresión lineal sobre porcentaje_aciertos de las
- *        últimas 5 sesiones válidas, clasificada en MEJORA / ESTANCAMIENTO
- *        / REGRESION.
- * CA-04: se ejecuta en un hilo separado (no bloquea al llamador).
- */
 @Service
 @RequiredArgsConstructor
 public class IaEvaluacionService {
@@ -35,6 +26,7 @@ public class IaEvaluacionService {
 
     private final SesionJuegoRepository sesionJuegoRepository;
     private final IaEvaluacionSesionRepository iaEvaluacionSesionRepository;
+    private final IaAlertaService iaAlertaService;
 
     /**
      * CA-04: análisis asíncrono disparado tras finalizar una sesión.
@@ -82,6 +74,7 @@ public class IaEvaluacionService {
         IaEvaluacionSesion evaluacion = IaEvaluacionSesion.builder()
                 .ninoPerfil(ultimaSesion.getPerfil())
                 .juego(ultimaSesion.getJuego())
+                .sesion(ultimaSesion)
                 .nivel(ultimaSesion.getNivel().getNivel())
                 .tendencia(tendencia)
                 .confianza(confianza)
@@ -89,10 +82,15 @@ public class IaEvaluacionService {
                 .fechaEvaluacion(LocalDateTime.now())
                 .build();
 
-        iaEvaluacionSesionRepository.save(evaluacion);
+        IaEvaluacionSesion guardada = iaEvaluacionSesionRepository.save(evaluacion);
 
         log.info("Motor de IA: evaluación guardada (perfilId={}, juegoId={}, nivel={}, tendencia={}, confianza={}, n={})",
                 perfilId, juegoId, evaluacion.getNivel(), tendencia, confianza, ventana.size());
+
+        // Historia "Detección de regresión cognitiva": revisa si esta nueva
+        // evaluación completa 3 REGRESION consecutivas y, de ser así, dispara
+        // las alertas a padre/docente.
+        iaAlertaService.evaluarYAlertar(guardada);
     }
 
     // ── CA-02: regresión lineal simple (mínimos cuadrados) ──────────────────
@@ -143,7 +141,6 @@ public class IaEvaluacionService {
         return suma / valores.length;
     }
 
-    // CA-02: clasificación de la pendiente
     private TendenciaCognitiva clasificarTendencia(double pendiente) {
         if (pendiente > UMBRAL_PENDIENTE.doubleValue()) {
             return TendenciaCognitiva.MEJORA;

@@ -32,6 +32,13 @@ public class IaEvaluacionSesion {
     @JoinColumn(name = "juego_id", nullable = false)
     private Juego juego;
 
+    // Sesión (SesionJuego) que disparó esta evaluación — permite ubicar y
+    // resaltar exactamente las sesiones involucradas cuando se genera una
+    // alerta de regresión (historia "Notificaciones in-app de alertas").
+    @ManyToOne
+    @JoinColumn(name = "sesion_id")
+    private SesionJuego sesion;
+
     @Column(name = "nivel", nullable = false, length = 50)
     private String nivel;
 

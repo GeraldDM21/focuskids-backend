@@ -4,6 +4,7 @@ import cr.cenfotec.focuskids_backend.dto.DocenteProfileUpdateRequest;
 import cr.cenfotec.focuskids_backend.model.CalificacionDocente;
 import cr.cenfotec.focuskids_backend.model.Docente;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
+import cr.cenfotec.focuskids_backend.repository.DocenteRepository;
 import cr.cenfotec.focuskids_backend.service.CalificacionDocenteService;
 import cr.cenfotec.focuskids_backend.service.DocenteService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,50 @@ public class DocenteController {
 
     private final DocenteService            docenteService;
     private final CalificacionDocenteService calificacionService;
+    private final DocenteRepository          docenteRepository;
+
+    /**
+     * GET /api/docente/configuracion?usuarioId={id}
+     * CA-05 (Notificaciones in-app): estado actual del interruptor del docente.
+     */
+    @GetMapping("/configuracion")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> getConfiguracion(@RequestParam Integer usuarioId) {
+        return docenteRepository.findByUsuarioId(usuarioId)
+                .map(d -> ResponseEntity.ok(Map.<String, Object>of(
+                        "docenteId", d.getId(),
+                        "notificacionesInAppActivas", d.getNotificacionesInAppActivas()
+                )))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * PATCH /api/docente/notificaciones-in-app?usuarioId={id}
+     * CA-05: activa o desactiva el badge de notificaciones in-app del docente.
+     * Las alertas se siguen registrando en BD independientemente de este valor.
+     * Body: { "activo": true | false }
+     */
+    @PatchMapping("/notificaciones-in-app")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> toggleNotificacionesInApp(
+            @RequestParam Integer usuarioId,
+            @RequestBody Map<String, Boolean> body) {
+
+        Boolean activo = body.get("activo");
+        if (activo == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return docenteRepository.findByUsuarioId(usuarioId)
+                .map(docente -> {
+                    docente.setNotificacionesInAppActivas(activo);
+                    docenteRepository.save(docente);
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "notificacionesInAppActivas", activo
+                    ));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     /** Lista todos los docentes registrados (para que el padre pueda elegir uno). */
     @GetMapping("/lista")

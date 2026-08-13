@@ -26,4 +26,10 @@ public class Docente {
 
     @Column(name = "grado_grupo", length = 100)
     private String gradoGrupo;
+
+    // CA-05 (Notificaciones in-app): mismo interruptor que el del padre,
+    // aplicado al docente cuando también recibe alertas de regresión.
+    @Column(name = "notificaciones_in_app_activas", nullable = false)
+    @Builder.Default
+    private Boolean notificacionesInAppActivas = true;
 }
