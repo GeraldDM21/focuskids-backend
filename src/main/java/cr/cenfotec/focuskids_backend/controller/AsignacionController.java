@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -48,6 +49,19 @@ public class AsignacionController {
             @PathVariable Integer asignacionId,
             @PathVariable Integer perfilId) {
         return ResponseEntity.ok(asignacionService.registrarProgreso(asignacionId, perfilId));
+    }
+
+    /** Docente mueve la fecha límite de una asignación (ej. desde el calendario). Body: { "fechaLimite": "2026-08-20" } */
+    @PatchMapping("/{id}/fecha")
+    @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
+    public ResponseEntity<Asignacion> actualizarFecha(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> body) {
+        String fechaStr = body.get("fechaLimite");
+        if (fechaStr == null || fechaStr.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(asignacionService.actualizarFecha(id, LocalDate.parse(fechaStr)));
     }
 
     /** Docente elimina una asignación. */

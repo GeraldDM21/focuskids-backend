@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -70,6 +71,15 @@ public class AsignacionService {
             ap.setFechaCompletada(LocalDateTime.now());
         }
         return asignacionPerfilRepository.save(ap);
+    }
+
+    /** Permite mover la fecha límite de una asignación, por ejemplo desde el calendario. */
+    @Transactional
+    public Asignacion actualizarFecha(Integer id, LocalDate nuevaFecha) {
+        Asignacion a = asignacionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Asignacion no encontrada: " + id));
+        a.setFechaLimite(nuevaFecha);
+        return asignacionRepository.save(a);
     }
 
     @Transactional

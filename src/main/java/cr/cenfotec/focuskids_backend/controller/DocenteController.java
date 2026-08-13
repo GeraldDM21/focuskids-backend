@@ -1,5 +1,6 @@
 package cr.cenfotec.focuskids_backend.controller;
 
+import cr.cenfotec.focuskids_backend.dto.DocenteProfileUpdateRequest;
 import cr.cenfotec.focuskids_backend.model.CalificacionDocente;
 import cr.cenfotec.focuskids_backend.model.Docente;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
@@ -42,6 +43,24 @@ public class DocenteController {
     @PreAuthorize("hasAnyRole('PADRE', 'ADMINISTRADOR')")
     public ResponseEntity<PerfilNino> desasignar(@PathVariable Integer perfilId) {
         return ResponseEntity.ok(docenteService.desasignarDocente(perfilId));
+    }
+
+    // ── Perfil (auto-servicio) ────────────────────────────────────────────────
+
+    /** GET /api/docente/perfil?usuarioId={id} — datos actuales del docente para el formulario de Configuración. */
+    @GetMapping("/perfil")
+    @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
+    public ResponseEntity<Docente> obtenerPerfil(@RequestParam Integer usuarioId) {
+        return ResponseEntity.ok(docenteService.obtenerPorUsuarioId(usuarioId));
+    }
+
+    /** PUT /api/docente/perfil?usuarioId={id} — el docente edita y guarda su propio perfil. */
+    @PutMapping("/perfil")
+    @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
+    public ResponseEntity<Docente> actualizarPerfil(
+            @RequestParam Integer usuarioId,
+            @RequestBody DocenteProfileUpdateRequest datos) {
+        return ResponseEntity.ok(docenteService.actualizarPerfil(usuarioId, datos));
     }
 
     // ── Calificaciones ──────────────────────────────────────────────────────
