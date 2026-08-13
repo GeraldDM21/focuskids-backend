@@ -9,12 +9,14 @@ import cr.cenfotec.focuskids_backend.dto.juego.RegistrarRondaMaratonResponse;
 import cr.cenfotec.focuskids_backend.model.Juego;
 import cr.cenfotec.focuskids_backend.model.MaratonMentalRondaEvento;
 import cr.cenfotec.focuskids_backend.model.Metrica;
+import cr.cenfotec.focuskids_backend.model.NivelAsignado;
 import cr.cenfotec.focuskids_backend.model.NivelDificultad;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.SesionJuego;
 import cr.cenfotec.focuskids_backend.repository.JuegoRepository;
 import cr.cenfotec.focuskids_backend.repository.MaratonMentalRondaEventoRepository;
 import cr.cenfotec.focuskids_backend.repository.MetricaRepository;
+import cr.cenfotec.focuskids_backend.repository.NivelAsignadoRepository;
 import cr.cenfotec.focuskids_backend.repository.NivelDificultadRepository;
 import cr.cenfotec.focuskids_backend.repository.PerfilNinoRepository;
 import cr.cenfotec.focuskids_backend.repository.SesionJuegoRepository;
@@ -73,6 +75,7 @@ public class MaratonMentalService {
     private final PerfilNinoRepository perfilRepository;
     private final MaratonMentalRondaEventoRepository rondaRepository;
     private final MetricaRepository metricaRepository;
+    private final NivelAsignadoRepository nivelAsignadoRepository;
 
     @Transactional
     public IniciarMaratonResponse iniciarSesion(IniciarMaratonRequest request) {
@@ -90,6 +93,18 @@ public class MaratonMentalService {
 
         if (Boolean.FALSE.equals(juego.getActivo())) {
             throw new IllegalStateException("Maratón Mental está desactivado");
+        }
+
+        // El niño solo puede jugar el nivel que el docente/padre le fijó: si hay
+        // un NivelAsignado para este perfil+juego, se ignora el nivel elegido en
+        // el cliente y se fuerza el bloqueado (EXPERTO no es bloqueable como tal,
+        // así que un bloqueo en DIFICIL es también su techo).
+        String nivelBloqueado = nivelAsignadoRepository
+                .findByPerfilIdAndJuegoId(request.getPerfilId(), juego.getId())
+                .map(NivelAsignado::getNivel)
+                .orElse(null);
+        if (nivelBloqueado != null) {
+            nivel = nivelBloqueado;
         }
 
         NivelDificultad nivelBd = obtenerNivelBd(juego.getId(), nivel);

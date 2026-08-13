@@ -1,6 +1,7 @@
 package cr.cenfotec.focuskids_backend.service;
 
 import cr.cenfotec.focuskids_backend.dto.reporte.ComparacionSesionResponse;
+import cr.cenfotec.focuskids_backend.dto.reporte.HistorialSesionDTO;
 import cr.cenfotec.focuskids_backend.model.*;
 import cr.cenfotec.focuskids_backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +11,10 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -65,13 +68,51 @@ public class ReporteService {
     // ── RF-Historial: Historial detallado de sesiones por juego ────────────
 
     /** CA-01/CA-02/CA-03: historial paginado con filtros combinables. */
-    public Page<SesionJuego> obtenerHistorialSesiones(
+    @Transactional(readOnly = true)
+    public Page<HistorialSesionDTO> obtenerHistorialSesiones(
             Integer perfilId, Integer juegoId, String nivel,
-            LocalDateTime fechaDesde, LocalDateTime fechaHasta, int page) {
+            LocalDateTime fechaDesde, LocalDateTime fechaHasta,
+            Boolean soloCompletadas, int page) {
 
         PageRequest pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
-        return sesionJuegoRepository.filtrarHistorial(
-                perfilId, juegoId, nivel, fechaDesde, fechaHasta, pageable);
+        Page<SesionJuego> entidades = sesionJuegoRepository.filtrarHistorial(
+                perfilId, juegoId, nivel, fechaDesde, fechaHasta, soloCompletadas, pageable);
+
+        // Mapear a DTO dentro de la transacción para que las relaciones
+        // @ManyToOne (juego, nivel) estén disponibles sin LazyInitializationException.
+        List<HistorialSesionDTO> dtos = entidades.getContent().stream()
+                .map(this::toHistorialDTO)
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, entidades.getTotalElements());
+    }
+
+    /** Convierte SesionJuego → HistorialSesionDTO (debe llamarse dentro de una transacción activa). */
+    private HistorialSesionDTO toHistorialDTO(SesionJuego s) {
+        return HistorialSesionDTO.builder()
+                .id(s.getId())
+                .juego(s.getJuego() == null ? null : HistorialSesionDTO.JuegoInfo.builder()
+                        .id(s.getJuego().getId())
+                        .nombre(s.getJuego().getNombre())
+                        .tipo(s.getJuego().getTipo())
+                        .build())
+                .nivel(s.getNivel() == null ? null : HistorialSesionDTO.NivelInfo.builder()
+                        .id(s.getNivel().getId())
+                        .nivel(s.getNivel().getNivel())
+                        .build())
+                .inicio(s.getInicio()  != null ? s.getInicio().toString()  : null)
+                .fin   (s.getFin()     != null ? s.getFin().toString()     : null)
+                .puntaje(s.getPuntaje())
+                .completada(s.getCompletada())
+                .duracionSesionSegundos(s.getDuracionSesionSegundos())
+                .totalIntentos(s.getTotalIntentos())
+                .totalAciertos(s.getTotalAciertos())
+                .porcentajeAciertos(s.getPorcentajeAciertos())
+                .tiempoRespuestaPromedioMs(s.getTiempoRespuestaPromedioMs())
+                .rachaMaxAciertos(s.getRachaMaxAciertos())
+                .sesionConcentracionBaja(s.getSesionConcentracionBaja())
+                .sesionValida(s.getSesionValida())
+                .build();
     }
 
     /** CA-04: racha máxima y concentración baja ya viven en la sesión misma; aquí se agrega la comparación. */
@@ -127,7 +168,8 @@ public class ReporteService {
     /** CA-05: PDF del historial con los filtros actualmente aplicados (sin paginar). */
     public byte[] exportarHistorialPdf(
             Integer perfilId, Integer juegoId, String nivel,
-            LocalDateTime fechaDesde, LocalDateTime fechaHasta) {
+            LocalDateTime fechaDesde, LocalDateTime fechaHasta,
+            Boolean soloCompletadas) {
 
         PerfilNino perfil = perfilNinoRepository.findById(perfilId)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró el perfil infantil"));
@@ -140,7 +182,7 @@ public class ReporteService {
         }
 
         List<SesionJuego> sesiones = sesionJuegoRepository.filtrarHistorialSinPaginacion(
-                perfilId, juegoId, nivel, fechaDesde, fechaHasta);
+                perfilId, juegoId, nivel, fechaDesde, fechaHasta, soloCompletadas);
 
         return generarPdf(perfil, nombreJuegoFiltro, nivel, fechaDesde, fechaHasta, sesiones);
     }
