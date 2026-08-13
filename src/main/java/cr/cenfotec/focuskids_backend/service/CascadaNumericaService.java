@@ -22,7 +22,7 @@ public class CascadaNumericaService {
     private static final String NOMBRE_JUEGO = "Cascada Numérica";
 
     private static final int MAX_OPERACIONES = 20;
-    private static final int DURACION_MAXIMA_SEGUNDOS = 300;
+    private static final int DURACION_MAXIMA_SEGUNDOS = 120;
 
     private static final int NIVEL_MINIMO = 1;
     private static final int NIVEL_MAXIMO = 5;
@@ -505,7 +505,7 @@ public class CascadaNumericaService {
         int nuevaVelocidad = velocidadActual;
         boolean modificada = false;
 
-        if (precision >= 80) {
+        if (precision >= 90) {
             nuevoNivel = Math.min(
                     NIVEL_MAXIMO,
                     nivelActual + 1
