@@ -27,4 +27,23 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.initialize();
         return executor;
     }
+
+    /**
+     * El envío de correo (SMTP a Gmail) puede tardar varios segundos o
+     * colgarse por la red. Antes se enviaba el correo de verificación DENTRO
+     * de la petición HTTP de /auth/register, así que el registro (y el
+     * "Creando cuenta…" del frontend) se quedaba esperando ese envío antes
+     * de poder responder. Con este executor el correo se manda en segundo
+     * plano y la respuesta HTTP no espera a que termine.
+     */
+    @Bean(name = "emailExecutor")
+    public Executor getEmailExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("email-");
+        executor.initialize();
+        return executor;
+    }
 }

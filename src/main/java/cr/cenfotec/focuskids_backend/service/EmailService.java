@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import jakarta.mail.internet.MimeMessage;
@@ -61,6 +62,10 @@ public class EmailService {
         }
     }
 
+    // Se manda en segundo plano (ver AsyncConfig.emailExecutor): registrarse
+    // no debe quedar esperando a que Gmail responda el SMTP para poder
+    // devolverle la respuesta al frontend.
+    @Async("emailExecutor")
     public void enviarCorreoVerificacion(String destinatario, String nombre, String token) {
         String link = frontendUrl + "/auth/verify?token=" + token;
 
