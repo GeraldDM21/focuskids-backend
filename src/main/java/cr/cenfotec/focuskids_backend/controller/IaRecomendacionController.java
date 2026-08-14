@@ -73,6 +73,20 @@ public class IaRecomendacionController {
     }
 
     /**
+     * DOCENTE: asigna manualmente el nivel de un juego para un alumno específico.
+     * Crea o actualiza la recomendación con tendencia SOBRESCRITO.
+     * Param: nivel = FACIL | MEDIO | DIFICIL | EXPERTO
+     */
+    @PutMapping("/{perfilId}/{juegoId}/asignar")
+    @PreAuthorize("hasAnyRole('DOCENTE', 'ADMINISTRADOR')")
+    public ResponseEntity<IaRecomendacion> asignarNivel(
+            @PathVariable Integer perfilId,
+            @PathVariable Integer juegoId,
+            @RequestParam String nivel) {
+        return ResponseEntity.ok(iaService.asignarNivelDocente(perfilId, juegoId, nivel));
+    }
+
+    /**
      * CA-04: Solo ADMINISTRADOR puede sobrescribir el nivel recomendado.
      * Body: { "nivelId": 5 }
      */

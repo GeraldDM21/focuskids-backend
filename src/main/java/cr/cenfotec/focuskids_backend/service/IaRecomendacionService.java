@@ -41,6 +41,8 @@ public class IaRecomendacionService {
     private final IaRecomendacionRepository recomendacionRepository;
     private final SesionJuegoRepository     sesionJuegoRepository;
     private final NivelDificultadRepository nivelDificultadRepository;
+    private final PerfilNinoRepository      perfilNinoRepository;
+    private final JuegoRepository           juegoRepository;
 
     // ═══════════════════════════════════════════════════════════════════════
     // API pública
@@ -200,6 +202,48 @@ public class IaRecomendacionService {
         log.info("IA: perfil={} juego={} → {} (confianza={:.0%}) nivel {}.",
                 perfilId, juegoId, tendencia, confianza, nivelRecomendado.getNivel());
         return saved;
+    }
+
+    /**
+     * Permite al DOCENTE asignar manualmente el nivel de un juego para un alumno.
+     * Si ya existe una recomendación, la actualiza como SOBRESCRITO.
+     * Si no existe ninguna, crea una nueva con tendencia SOBRESCRITO.
+     */
+    @Transactional
+    public IaRecomendacion asignarNivelDocente(Integer perfilId, Integer juegoId, String nivelNombre) {
+        NivelDificultad nivel = nivelDificultadRepository
+                .findByJuegoIdAndNivel(juegoId, nivelNombre)
+                .orElseThrow(() -> new RuntimeException("Nivel '" + nivelNombre + "' no encontrado para juego " + juegoId));
+
+        Optional<IaRecomendacion> existente = recomendacionRepository
+                .findTopByPerfilIdAndJuegoIdOrderByFechaRecomendacionDesc(perfilId, juegoId);
+
+        if (existente.isPresent()) {
+            IaRecomendacion rec = existente.get();
+            rec.setNivelAnterior(rec.getNivelRecomendado());
+            rec.setNivelRecomendado(nivel);
+            rec.setTendencia("SOBRESCRITO");
+            rec.setMotivo("Nivel asignado por docente: " + nivel.getNivel());
+            rec.setFechaRecomendacion(LocalDateTime.now());
+            return recomendacionRepository.save(rec);
+        } else {
+            PerfilNino perfil = perfilNinoRepository.findById(perfilId)
+                    .orElseThrow(() -> new RuntimeException("Perfil no encontrado: " + perfilId));
+            Juego juego = juegoRepository.findById(juegoId)
+                    .orElseThrow(() -> new RuntimeException("Juego no encontrado: " + juegoId));
+            IaRecomendacion rec = IaRecomendacion.builder()
+                    .perfil(perfil)
+                    .juego(juego)
+                    .nivelRecomendado(nivel)
+                    .nivelAnterior(nivel)
+                    .tendencia("SOBRESCRITO")
+                    .confianza(BigDecimal.ONE.setScale(4, RoundingMode.HALF_UP))
+                    .motivo("Nivel asignado por docente: " + nivel.getNivel())
+                    .fechaRecomendacion(LocalDateTime.now())
+                    .sesionesOrigen("[]")
+                    .build();
+            return recomendacionRepository.save(rec);
+        }
     }
 
     /**
