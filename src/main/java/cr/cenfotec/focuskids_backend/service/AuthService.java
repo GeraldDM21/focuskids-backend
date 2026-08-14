@@ -101,7 +101,7 @@ public class AuthService {
                     .nombre(usuarioExistente.getNombre())
                     .email(usuarioExistente.getEmail())
                     .rol(usuarioExistente.getRol())
-                    .mensaje("Ya tenías una cuenta pendiente de verificación con este correo. Te reenviamos el correo de verificación.")
+                    .mensaje("Ya existe una cuenta registrada con este correo. Puedes iniciar sesión con normalidad.")
                     .build();
         }
 
@@ -157,7 +157,7 @@ public class AuthService {
                 .nombre(usuario.getNombre())
                 .email(usuario.getEmail())
                 .rol(usuario.getRol())
-                .mensaje("Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.")
+                .mensaje("Cuenta creada exitosamente. Ya puedes iniciar sesión.")
                 .build();
     }
 
