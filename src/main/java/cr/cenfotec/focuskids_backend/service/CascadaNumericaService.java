@@ -45,6 +45,7 @@ public class CascadaNumericaService {
     private final CascadaOperacionEventoRepository operacionRepository;
     private final MetricaRepository metricaRepository;
     private final NivelAsignadoRepository nivelAsignadoRepository;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public IniciarCascadaResponse iniciarSesion(
@@ -285,6 +286,17 @@ public class CascadaNumericaService {
         sesion.setNivel(nivelFinal);
 
         sesionJuegoRepository.save(sesion);
+
+        // Notificar al docente cuando el alumno termina la sesión
+        cr.cenfotec.focuskids_backend.model.Docente docente = sesion.getPerfil().getDocente();
+        if (docente != null && docente.getUsuario() != null) {
+            notificacionService.crear(
+                docente.getUsuario().getId(),
+                "SESION_COMPLETADA",
+                sesion.getPerfil().getNombre() + " completó una sesión de "
+                    + sesion.getJuego().getNombre() + ". Podés revisar y ajustar su nivel de dificultad."
+            );
+        }
 
         Metrica metrica = metricaRepository.findBySesionId(sesion.getId())
                 .orElseGet(() -> Metrica.builder().sesion(sesion).build());

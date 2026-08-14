@@ -29,6 +29,7 @@ public class SesionService {
     private final NivelDificultadRepository nivelDificultadRepository;
     private final NivelAsignadoRepository nivelAsignadoRepository;
     private final IaEvaluacionService iaEvaluacionService;
+    private final NotificacionService notificacionService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Transactional
@@ -100,6 +101,17 @@ public class SesionService {
         sesion.setSesionValida(calcularSesionValida(sesion));
 
         SesionJuego guardada = sesionJuegoRepository.save(sesion);
+
+        // ── Notificar al docente cuando el alumno termina una sesión ──────
+        Docente docente = guardada.getPerfil().getDocente();
+        if (docente != null && docente.getUsuario() != null) {
+            notificacionService.crear(
+                docente.getUsuario().getId(),
+                "SESION_COMPLETADA",
+                guardada.getPerfil().getNombre() + " completó una sesión de "
+                    + guardada.getJuego().getNombre() + ". Podés revisar y ajustar su nivel de dificultad."
+            );
+        }
 
         // ── Métrica agregada para reportes (docente/padre) ────────────────
         // Algunos juegos (Cascada Numérica, Lab Ciencias, Laberinto Cognitivo,

@@ -76,6 +76,7 @@ public class MaratonMentalService {
     private final MaratonMentalRondaEventoRepository rondaRepository;
     private final MetricaRepository metricaRepository;
     private final NivelAsignadoRepository nivelAsignadoRepository;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public IniciarMaratonResponse iniciarSesion(IniciarMaratonRequest request) {
@@ -238,6 +239,17 @@ public class MaratonMentalService {
             sesion.setPuntaje(puntaje);
             sesion.setCompletada(true);
             sesionRepository.save(sesion);
+
+            // Notificar al docente cuando el alumno termina la sesión
+            cr.cenfotec.focuskids_backend.model.Docente docente = sesion.getPerfil().getDocente();
+            if (docente != null && docente.getUsuario() != null) {
+                notificacionService.crear(
+                    docente.getUsuario().getId(),
+                    "SESION_COMPLETADA",
+                    sesion.getPerfil().getNombre() + " completó una sesión de "
+                        + sesion.getJuego().getNombre() + ". Podés revisar y ajustar su nivel de dificultad."
+                );
+            }
         }
 
         Metrica metrica = metricaRepository.findBySesionId(sesionId)
