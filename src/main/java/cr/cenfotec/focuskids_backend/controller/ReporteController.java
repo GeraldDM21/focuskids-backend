@@ -81,6 +81,29 @@ public class ReporteController {
         return ResponseEntity.ok(reporteService.obtenerComparacion(perfilId, sesionId));
     }
 
+    /** Exporta a Excel el historial con los mismos filtros actualmente aplicados (sin paginar). */
+    @GetMapping("/perfil/{perfilId}/historial/exportar-excel")
+    public ResponseEntity<byte[]> exportarHistorialExcel(
+            @PathVariable Integer perfilId,
+            @RequestParam(required = false) Integer juegoId,
+            @RequestParam(required = false) String nivel,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHasta,
+            @RequestParam(required = false) Boolean soloCompletadas) {
+
+        byte[] excel = reporteService.exportarHistorialExcel(
+                perfilId, juegoId,
+                (nivel != null && nivel.isBlank()) ? null : nivel,
+                fechaDesde, fechaHasta, soloCompletadas);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"historial-sesiones.xlsx\"")
+                .body(excel);
+    }
+
     /** CA-05: exporta a PDF el historial con los mismos filtros actualmente aplicados (sin paginar). */
     @GetMapping("/perfil/{perfilId}/historial/exportar-pdf")
     public ResponseEntity<byte[]> exportarHistorialPdf(
