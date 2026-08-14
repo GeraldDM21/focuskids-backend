@@ -32,4 +32,9 @@ public class Docente {
     @Column(name = "notificaciones_in_app_activas", nullable = false)
     @Builder.Default
     private Boolean notificacionesInAppActivas = true;
+
+    // CA-01: el docente puede suscribirse al resumen semanal de sus alumnos.
+    @Column(name = "preferencia_resumen_semanal", nullable = false)
+    @Builder.Default
+    private Boolean preferenciaResumenSemanal = true;
 }

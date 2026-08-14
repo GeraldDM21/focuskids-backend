@@ -1,8 +1,10 @@
 package cr.cenfotec.focuskids_backend.service;
 
+import cr.cenfotec.focuskids_backend.model.Docente;
 import cr.cenfotec.focuskids_backend.model.PadreTutor;
 import cr.cenfotec.focuskids_backend.model.PerfilNino;
 import cr.cenfotec.focuskids_backend.model.SesionJuego;
+import cr.cenfotec.focuskids_backend.repository.DocenteRepository;
 import cr.cenfotec.focuskids_backend.repository.PadreTutorRepository;
 import cr.cenfotec.focuskids_backend.repository.PerfilNinoRepository;
 import cr.cenfotec.focuskids_backend.repository.SesionJuegoRepository;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class ResumenSemanalService {
 
     private final PadreTutorRepository padreTutorRepository;
+    private final DocenteRepository docenteRepository;
     private final PerfilNinoRepository perfilNinoRepository;
     private final SesionJuegoRepository sesionJuegoRepository;
     private final EmailService emailService;
@@ -35,22 +38,32 @@ public class ResumenSemanalService {
      */
     public void enviarResumenes() {
         LocalDateTime inicioSemana = LocalDateTime.now().minusDays(7);
-        List<PadreTutor> padres = padreTutorRepository.findAll();
 
-        for (PadreTutor padre : padres) {
-            // CA-03: respetar preferencia del padre
+        // ── Padres ────────────────────────────────────────────────────────
+        for (PadreTutor padre : padreTutorRepository.findAll()) {
             if (Boolean.FALSE.equals(padre.getPreferenciaResumenSemanal())) continue;
-
-            String email = padre.getUsuario().getEmail();
-            String nombrePadre = padre.getUsuario().getNombre();
-
             List<PerfilNino> ninos = perfilNinoRepository.findByPadreId(padre.getId());
             if (ninos.isEmpty()) continue;
-
+            String email = padre.getUsuario().getEmail();
+            String nombre = padre.getUsuario().getNombre();
             try {
-                String html = construirHtml(nombrePadre, ninos, inicioSemana);
-                emailService.enviarResumenSemanal(email, nombrePadre, html);
-                log.info("Resumen semanal enviado a {}", email);
+                emailService.enviarResumenSemanal(email, nombre, construirHtml(nombre, ninos, inicioSemana));
+                log.info("Resumen semanal (padre) enviado a {}", email);
+            } catch (Exception e) {
+                log.error("Error enviando resumen semanal a {}: {}", email, e.getMessage());
+            }
+        }
+
+        // ── Docentes ──────────────────────────────────────────────────────
+        for (Docente docente : docenteRepository.findAll()) {
+            if (Boolean.FALSE.equals(docente.getPreferenciaResumenSemanal())) continue;
+            List<PerfilNino> alumnos = perfilNinoRepository.findByDocenteUsuarioId(docente.getUsuario().getId());
+            if (alumnos.isEmpty()) continue;
+            String email = docente.getUsuario().getEmail();
+            String nombre = docente.getUsuario().getNombre();
+            try {
+                emailService.enviarResumenSemanal(email, nombre, construirHtmlDocente(nombre, alumnos, inicioSemana));
+                log.info("Resumen semanal (docente) enviado a {}", email);
             } catch (Exception e) {
                 log.error("Error enviando resumen semanal a {}: {}", email, e.getMessage());
             }
@@ -177,6 +190,47 @@ public class ResumenSemanalService {
               %s
             </div>
             """.formatted(nino.getNombre(), totalSesiones, textoResumen, detalleJuegos);
+    }
+
+    private String construirHtmlDocente(String nombreDocente, List<PerfilNino> alumnos, LocalDateTime inicioSemana) {
+        StringBuilder bloques = new StringBuilder();
+        for (PerfilNino alumno : alumnos) {
+            List<SesionJuego> sesiones = sesionJuegoRepository
+                    .findByPerfilIdAndInicioAfter(alumno.getId(), inicioSemana)
+                    .stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getCompletada()))
+                    .toList();
+            bloques.append(bloqueNino(alumno, sesiones));
+        }
+        String dashboardUrl = frontendUrl + "/docente/dashboard";
+        return """
+            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;background:#F8FAFC;border-radius:16px;overflow:hidden;">
+              <div style="background:linear-gradient(135deg,#0EA5E9,#6366F1);padding:32px 28px;text-align:center;">
+                <h1 style="margin:0;color:white;font-size:24px;">📊 Resumen Semanal de su Clase</h1>
+                <p style="margin:8px 0 0;color:#BAE6FD;font-size:14px;">%s</p>
+              </div>
+              <div style="padding:28px;">
+                <p style="color:#1E293B;font-size:16px;">Hola <strong>%s</strong>,</p>
+                <p style="color:#475569;font-size:14px;margin-bottom:24px;">
+                  Aquí tienes el progreso semanal de sus alumnos en FocusKids.
+                </p>
+                %s
+                <div style="text-align:center;margin:32px 0 16px;">
+                  <a href="%s" style="background:#6366F1;color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:15px;">
+                    📈 Ver reportes completos
+                  </a>
+                </div>
+                <p style="color:#94A3B8;font-size:12px;text-align:center;">
+                  Puedes desactivar este correo desde Configuración en tu dashboard docente.
+                </p>
+              </div>
+            </div>
+            """.formatted(
+                "Semana del " + inicioSemana.format(DateTimeFormatter.ofPattern("dd 'de' MMMM", new Locale("es"))),
+                nombreDocente,
+                bloques.toString(),
+                dashboardUrl
+        );
     }
 
     // CA-02: lenguaje natural

@@ -34,8 +34,36 @@ public class DocenteController {
         return docenteRepository.findByUsuarioId(usuarioId)
                 .map(d -> ResponseEntity.ok(Map.<String, Object>of(
                         "docenteId", d.getId(),
-                        "notificacionesInAppActivas", d.getNotificacionesInAppActivas()
+                        "notificacionesInAppActivas", d.getNotificacionesInAppActivas(),
+                        "preferenciaResumenSemanal", d.getPreferenciaResumenSemanal()
                 )))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * PATCH /api/docente/resumen-semanal?usuarioId={id}
+     * Activa o desactiva el resumen semanal para el docente.
+     * Body: { "activo": true | false }
+     */
+    @PatchMapping("/resumen-semanal")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> toggleResumenSemanal(
+            @RequestParam Integer usuarioId,
+            @RequestBody Map<String, Boolean> body) {
+
+        Boolean activo = body.get("activo");
+        if (activo == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return docenteRepository.findByUsuarioId(usuarioId)
+                .map(docente -> {
+                    docente.setPreferenciaResumenSemanal(activo);
+                    docenteRepository.save(docente);
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "preferenciaResumenSemanal", activo
+                    ));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
