@@ -14,7 +14,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sopa-letras")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:4200")
 public class SopaLetrasController {
 
     private final SopaLetrasService sopaLetrasService;

@@ -61,6 +61,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                // Archivos estáticos del frontend Angular
+                .requestMatchers("/", "/index.html", "/*.js", "/*.css", "/*.ico", "/*.txt", "/*.webmanifest").permitAll()
+                .requestMatchers("/assets/**", "/media/**", "/mascotas/**", "/data/**", "/chunk-**", "/main-**", "/styles-**").permitAll()
+                .requestMatchers("/auth/**", "/padre/**", "/docente/**", "/nino/**", "/admin/**", "/unauthorized").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/juegos/**").authenticated()
